@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 void runCode(std::string& code);
@@ -180,6 +181,15 @@ class Scanner {
     int current = 0;
     int line = 1;
 
+    const std::unordered_map<std::string, TokenType> keywords = {
+        {"and", TokenType::AND},     {"class", TokenType::CLASS},   {"else", TokenType::ELSE},
+        {"false", TokenType::FALSE}, {"for", TokenType::FOR},       {"fun", TokenType::FUN},
+        {"if", TokenType::IF},       {"nil", TokenType::NIL},       {"or", TokenType::OR},
+        {"print", TokenType::PRINT}, {"return", TokenType::RETURN}, {"super", TokenType::SUPER},
+        {"this", TokenType::THIS},   {"true", TokenType::TRUE},     {"var", TokenType::VAR},
+        {"while", TokenType::WHILE},
+    };
+
     void scanToken() {
         char c = advance();
         switch (c) {
@@ -247,7 +257,13 @@ class Scanner {
                 readString();
                 break;
             default:
-                error(line, "Unexpected character.");
+                if (isDigit(c)) {
+                    readNumber();
+                } else if (isAlpha(c)) {
+                    readIdentifier();
+                } else {
+                    error(line, "Unexpected character.");
+                }
                 break;
         }
     }
@@ -304,6 +320,49 @@ class Scanner {
         // trim the srounding quotes
         std::string value = source.substr(start + 1, current - start - 2);
         addToken(TokenType::STRING, value);
+    }
+
+    bool isDigit(char c) { return c >= '0' && c <= '9'; }
+
+    void readNumber() {
+        while (isDigit(peek())) {
+            advance();
+        }
+
+        // Look for a fractional part.
+        if (peek() == '.' && isDigit(peekNext())) {
+            // Consume the "."
+            advance();
+
+            while (isDigit(peek())) {
+                advance();
+            }
+        }
+
+        addToken(TokenType::NUMBER, source.substr(start, current - start));
+    }
+
+    char peekNext() {
+        if (current + 1 >= source.length()) {
+            return '\0';
+        }
+
+        return source[current + 1];
+    }
+
+    bool isAlpha(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'; }
+
+    bool isAlphaNumeric(char c) { return isAlpha(c) || isDigit(c); }
+
+    void readIdentifier() {
+        while (isAlphaNumeric(peek())) {
+            advance();
+        }
+
+        std::string text = source.substr(start, current - start);
+        TokenType type = keywords.contains(text) ? keywords.at(text) : TokenType::IDENTIFIER;
+
+        addToken(type);
     }
 };
 
