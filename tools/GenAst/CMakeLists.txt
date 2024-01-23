@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.20)
 
-SET(PROJECT_NAME Loxpp)
+SET(PROJECT_NAME LoxppGenAst)
 
 project(${PROJECT_NAME})
 
@@ -25,18 +25,4 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 endif()
 
 
-file(GLOB SRC src/*.cpp)
-include_directories(src/)
-
-add_subdirectory(tools/genAst)
-
-add_executable(${PROJECT_NAME} ${SRC})
-
-
-# symlink the scripts folder to the build directory
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${CMAKE_CURRENT_SOURCE_DIR}/scripts $<TARGET_FILE_DIR:${PROJECT_NAME}>/scripts
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/scripts
-    COMMENT "symbolic link resources folder from ${CMAKE_SOURCE_DIR}/scripts to $<TARGET_FILE_DIR:${PROJECT_NAME}>/scripts"
-)
+add_executable(${PROJECT_NAME} genAst.cpp)
