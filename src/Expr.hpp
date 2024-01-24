@@ -1,3 +1,4 @@
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -43,30 +44,31 @@ template <typename T>
 class BinaryExpr : public Expr<T>
 {
   public:
-    BinaryExpr(const Expr<T>& left, Token op, const Expr<T>& right) : left(left), op(op), right(right)
+    BinaryExpr(std::shared_ptr<Expr<T>> left, Token op, std::shared_ptr<Expr<T>> right)
+        : left(left), op(op), right(right)
     {
     }
     T accept(ExprVisitor<T>& visitor) const override
     {
         return visitor.visitBinaryExpr(*this);
     }
-    const Expr<T>& left;
+    std::shared_ptr<Expr<T>> left;
     Token op;
-    const Expr<T>& right;
+    std::shared_ptr<Expr<T>> right;
 };
 
 template <typename T>
 class GroupingExpr : public Expr<T>
 {
   public:
-    GroupingExpr(const Expr<T>& expression) : expression(expression)
+    GroupingExpr(std::shared_ptr<Expr<T>> expression) : expression(expression)
     {
     }
     T accept(ExprVisitor<T>& visitor) const override
     {
         return visitor.visitGroupingExpr(*this);
     }
-    const Expr<T>& expression;
+    std::shared_ptr<Expr<T>> expression;
 };
 
 template <typename T>
@@ -87,7 +89,7 @@ template <typename T>
 class UnaryExpr : public Expr<T>
 {
   public:
-    UnaryExpr(Token op, const Expr<T>& right) : op(op), right(right)
+    UnaryExpr(Token op, std::shared_ptr<Expr<T>> right) : op(op), right(right)
     {
     }
     T accept(ExprVisitor<T>& visitor) const override
@@ -95,5 +97,5 @@ class UnaryExpr : public Expr<T>
         return visitor.visitUnaryExpr(*this);
     }
     Token op;
-    const Expr<T>& right;
+    std::shared_ptr<Expr<T>> right;
 };

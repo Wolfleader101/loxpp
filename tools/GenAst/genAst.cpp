@@ -42,10 +42,10 @@ int main(int argc, char** argv)
 
     defineAst(output_dir, "Expr",
               {
-                  "Binary   : const Expr<T>& left, Token op, const Expr<T>& right", // Binary class
-                  "Grouping : const Expr<T>& expression",                           // Grouping class
-                  "Literal  : std::string value",                                   // Literal class
-                  "Unary    : Token op, const Expr<T>& right"                       // Unary class
+                  "Binary   : std::shared_ptr<Expr<T>> left, Token op, std::shared_ptr<Expr<T>> right", // Binary class
+                  "Grouping : std::shared_ptr<Expr<T>> expression",     // Grouping class
+                  "Literal  : std::string value",                       // Literal class
+                  "Unary    : Token op, std::shared_ptr<Expr<T>> right" // Unary class
               });
 
     return 0;
@@ -61,7 +61,8 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
 
     outputFile << "#include <string>" << std::endl;
     outputFile << "#include <vector>" << std::endl;
-    outputFile << std::endl;
+    outputFile << "#include <memory>" << std::endl << std::endl;
+
     outputFile << "#include \"Token.hpp\"" << std::endl << std::endl;
 
     outputFile << "template <typename T>" << std::endl;
