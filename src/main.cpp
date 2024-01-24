@@ -7,6 +7,52 @@
 
 #include "Scanner.hpp"
 
+#include "Expr.hpp"
+
+class AstPrinter : public Visitor<std::string>
+{
+  public:
+    std::string print(const Expr<std::string>& expr)
+    {
+        return expr.accept(*this);
+    }
+
+    std::string visitBinaryExpr(const Binary<std::string>& expr) override
+    {
+        return parenthesize(expr.op.lexeme, {&expr.left, &expr.right});
+    }
+
+    std::string visitGroupingExpr(const Grouping<std::string>& expr) override
+    {
+        return parenthesize("group", {&expr.expression});
+    }
+
+    std::string visitLiteralExpr(const Literal<std::string>& expr) override
+    {
+        return expr.value;
+    }
+
+    std::string visitUnaryExpr(const Unary<std::string>& expr) override
+    {
+        return parenthesize(expr.op.lexeme, {&expr.right});
+    }
+
+  private:
+    std::string parenthesize(const std::string& name, std::vector<const Expr<std::string>*> exprs)
+    {
+        std::string builder = "(" + name;
+
+        for (const auto& expr : exprs)
+        {
+            builder += " " + print(*expr);
+        }
+
+        builder += ")";
+
+        return builder;
+    }
+};
+
 void runCode(std::string& code);
 
 void runFile(const char* path);
@@ -29,6 +75,17 @@ static LoxppLogger logger;
 
 int main(int argc, char** argv)
 {
+
+    Literal<std::string> literal = Literal<std::string>("123");
+    Unary<std::string> unary = Unary<std::string>(Token(TokenType::MINUS, "-", "", 1), literal);
+
+    Literal<std::string> literal2 = Literal<std::string>("45.67");
+    Grouping<std::string> grouping = Grouping<std::string>(literal2);
+
+    Binary<std::string> expr = Binary<std::string>(unary, Token(TokenType::STAR, "*", "", 1), grouping);
+
+    std::cout << AstPrinter().print(expr) << std::endl;
+
     if (argc > 2)
     {
         std::cout << "Usage: loxpp [script]" << std::endl;

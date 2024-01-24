@@ -53,16 +53,15 @@ enum class TokenType
     END_OF_FILE
 };
 
-constexpr const char *TokenTypeToString(TokenType type);
+constexpr const char* TokenTypeToString(TokenType type);
 
 class Token
 {
-public:
-    Token(TokenType type, const std::string &lexeme, const std::string &literal, int line);
+  public:
+    Token(TokenType type, const std::string& lexeme, const std::string& literal, int line);
 
     std::string toString();
 
-private:
     TokenType type;
     std::string lexeme;
     std::string literal;
