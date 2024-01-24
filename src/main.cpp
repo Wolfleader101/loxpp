@@ -76,16 +76,6 @@ static LoxppLogger logger;
 int main(int argc, char** argv)
 {
 
-    Literal<std::string> literal = Literal<std::string>("123");
-    Unary<std::string> unary = Unary<std::string>(Token(TokenType::MINUS, "-", "", 1), literal);
-
-    Literal<std::string> literal2 = Literal<std::string>("45.67");
-    Grouping<std::string> grouping = Grouping<std::string>(literal2);
-
-    Binary<std::string> expr = Binary<std::string>(unary, Token(TokenType::STAR, "*", "", 1), grouping);
-
-    std::cout << AstPrinter().print(expr) << std::endl;
-
     if (argc > 2)
     {
         std::cout << "Usage: loxpp [script]" << std::endl;
