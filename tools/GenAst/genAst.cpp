@@ -42,10 +42,10 @@ int main(int argc, char** argv)
 
     defineAst(output_dir, "Expr",
               {
-                  "Binary   : Expr& left, Token op, Expr& right", // Binary class
-                  "Grouping : Expr& expression",                  // Grouping class
-                  "Literal  : std::string value",                 // Literal class
-                  "Unary    : Token op, Expr& right"              // Unary class
+                  "Binary   : const Expr<T>& left, Token op, const Expr<T>& right", // Binary class
+                  "Grouping : const Expr<T>& expression",                           // Grouping class
+                  "Literal  : std::string value",                                   // Literal class
+                  "Unary    : Token op, const Expr<T>& right"                       // Unary class
               });
 
     return 0;
@@ -65,12 +65,15 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
     outputFile << "#include \"Token.hpp\"" << std::endl << std::endl;
 
     outputFile << "template <typename T>" << std::endl;
-    outputFile << "class Visitor;" << std::endl << std::endl;
+    outputFile << "class " << baseName << "Visitor;" << std::endl << std::endl;
 
     outputFile << "template <typename T>" << std::endl;
     outputFile << "class " << baseName << " {" << std::endl;
 
     outputFile << "public:" << std::endl;
+    outputFile << "   virtual ~" << baseName << "() = default;" << std::endl;
+    outputFile << "    virtual T accept(" << baseName << "Visitor<T>& visitor) const = 0;" << std::endl;
+    outputFile << "};" << std::endl << std::endl;
 
     // forward declare sub types
     for (const std::string& type : types)
@@ -78,12 +81,11 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
         size_t colonPos = type.find(":");
         std::string className = type.substr(0, colonPos);
         trim(className);
-        outputFile << "    class " << className << ";" << std::endl;
+        outputFile << "template<typename T>" << std::endl;
+        outputFile << "    class " << className << baseName << ";" << std::endl << std::endl;
     }
 
     defineVisitor(outputFile, baseName, types);
-
-    outputFile << "    virtual T accept(Visitor& visitor) const = 0;" << std::endl;
 
     for (const std::string& type : types)
     {
@@ -92,7 +94,8 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
         trim(className);
         std::string fields = type.substr(colonPos + 1);
 
-        outputFile << "class " << className << " : public " << baseName << std::endl;
+        outputFile << "template<typename T>" << std::endl;
+        outputFile << "class " << className << baseName << " : public " << baseName << "<T>" << std::endl;
         outputFile << "{" << std::endl;
         outputFile << "public:" << std::endl;
 
@@ -107,7 +110,7 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
         }
 
         // Constructor
-        outputFile << "    " << className << "(";
+        outputFile << "    " << className << baseName << "(";
         bool first = true;
         for (const std::string& f : splitFields)
         {
@@ -125,8 +128,17 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
         {
             if (!first)
                 outputFile << ", ";
+
             size_t spacePos = f.find(" ");
             std::string fieldName = f.substr(spacePos + 1);
+
+            // if there is a second space, extract the field name from it
+            size_t secondSpacePos = fieldName.find(" ");
+            if (secondSpacePos != std::string::npos)
+            {
+                fieldName = fieldName.substr(secondSpacePos + 1);
+            }
+
             outputFile << fieldName << "(" << fieldName << ")";
             first = false;
         }
@@ -135,7 +147,7 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
         outputFile << "    }" << std::endl;
 
         // Visitor pattern
-        outputFile << "    T accept(Visitor& visitor) const override" << std::endl;
+        outputFile << "    T accept(" << baseName << "Visitor<T>& visitor) const override" << std::endl;
         outputFile << "    {" << std::endl;
         outputFile << "        return visitor.visit" << className + baseName << "(*this);" << std::endl;
         outputFile << "    }" << std::endl;
@@ -143,23 +155,24 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
         // Fields
         for (const std::string& f : splitFields)
         {
-            outputFile << "    const " << f << ";" << std::endl;
+            outputFile << "    " << f << ";" << std::endl;
         }
 
         outputFile << "};" << std::endl;
         outputFile << std::endl;
     }
 
-    outputFile << "};" << std::endl << std::endl;
-
     outputFile.close();
 }
 
 void defineVisitor(std::fstream& outputFile, const std::string& baseName, const std::vector<std::string>& types)
 {
-    outputFile << "class Visitor" << std::endl;
+    outputFile << "template <typename T>" << std::endl;
+    outputFile << "class " << baseName << "Visitor" << std::endl;
     outputFile << "{" << std::endl;
     outputFile << "public:" << std::endl;
+
+    outputFile << "    virtual ~" << baseName << "Visitor() = default;" << std::endl;
 
     for (const std::string& type : types)
     {
@@ -169,8 +182,8 @@ void defineVisitor(std::fstream& outputFile, const std::string& baseName, const 
         std::string lowerBaseName = baseName;
         std::transform(lowerBaseName.begin(), lowerBaseName.end(), lowerBaseName.begin(), ::tolower);
 
-        outputFile << "    virtual T visit" << typeName << baseName << "(" << typeName << "& " << lowerBaseName
-                   << ") = 0;" << std::endl;
+        outputFile << "    virtual T visit" << typeName << baseName << "(const " << typeName << baseName << "<T>& "
+                   << lowerBaseName << ") = 0;" << std::endl;
         outputFile << std::endl;
     }
 

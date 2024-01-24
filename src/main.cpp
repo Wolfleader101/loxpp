@@ -9,7 +9,7 @@
 
 #include "Expr.hpp"
 
-class AstPrinter : public Visitor<std::string>
+class AstPrinter : public ExprVisitor<std::string>
 {
   public:
     std::string print(const Expr<std::string>& expr)
@@ -17,22 +17,22 @@ class AstPrinter : public Visitor<std::string>
         return expr.accept(*this);
     }
 
-    std::string visitBinaryExpr(const Binary<std::string>& expr) override
+    std::string visitBinaryExpr(const BinaryExpr<std::string>& expr) override
     {
         return parenthesize(expr.op.lexeme, {&expr.left, &expr.right});
     }
 
-    std::string visitGroupingExpr(const Grouping<std::string>& expr) override
+    std::string visitGroupingExpr(const GroupingExpr<std::string>& expr) override
     {
         return parenthesize("group", {&expr.expression});
     }
 
-    std::string visitLiteralExpr(const Literal<std::string>& expr) override
+    std::string visitLiteralExpr(const LiteralExpr<std::string>& expr) override
     {
         return expr.value;
     }
 
-    std::string visitUnaryExpr(const Unary<std::string>& expr) override
+    std::string visitUnaryExpr(const UnaryExpr<std::string>& expr) override
     {
         return parenthesize(expr.op.lexeme, {&expr.right});
     }

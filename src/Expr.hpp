@@ -4,51 +4,49 @@
 #include "Token.hpp"
 
 template <typename T>
-class Visitor;
+class ExprVisitor;
 
 template <typename T>
 class Expr
 {
   public:
     virtual ~Expr() = default;
-
-    virtual T accept(Visitor<T>& visitor) const = 0;
+    virtual T accept(ExprVisitor<T>& visitor) const = 0;
 };
 
 template <typename T>
-class Binary;
+class BinaryExpr;
 
 template <typename T>
-class Grouping;
+class GroupingExpr;
 
 template <typename T>
-class Literal;
+class LiteralExpr;
 
 template <typename T>
-class Unary;
+class UnaryExpr;
 
 template <typename T>
-class Visitor
+class ExprVisitor
 {
   public:
-    virtual ~Visitor() = default;
-    virtual T visitBinaryExpr(const Binary<T>& expr) = 0;
+    virtual ~ExprVisitor() = default;
+    virtual T visitBinaryExpr(const BinaryExpr<T>& expr) = 0;
 
-    virtual T visitGroupingExpr(const Grouping<T>& expr) = 0;
+    virtual T visitGroupingExpr(const GroupingExpr<T>& expr) = 0;
 
-    virtual T visitLiteralExpr(const Literal<T>& expr) = 0;
+    virtual T visitLiteralExpr(const LiteralExpr<T>& expr) = 0;
 
-    virtual T visitUnaryExpr(const Unary<T>& expr) = 0;
+    virtual T visitUnaryExpr(const UnaryExpr<T>& expr) = 0;
 };
-
 template <typename T>
-class Binary : public Expr<T>
+class BinaryExpr : public Expr<T>
 {
   public:
-    Binary(const Expr<T>& left, Token op, const Expr<T>& right) : left(left), op(op), right(right)
+    BinaryExpr(const Expr<T>& left, Token op, const Expr<T>& right) : left(left), op(op), right(right)
     {
     }
-    T accept(Visitor<T>& visitor) const override
+    T accept(ExprVisitor<T>& visitor) const override
     {
         return visitor.visitBinaryExpr(*this);
     }
@@ -58,13 +56,13 @@ class Binary : public Expr<T>
 };
 
 template <typename T>
-class Grouping : public Expr<T>
+class GroupingExpr : public Expr<T>
 {
   public:
-    Grouping(const Expr<T>& expression) : expression(expression)
+    GroupingExpr(const Expr<T>& expression) : expression(expression)
     {
     }
-    T accept(Visitor<T>& visitor) const override
+    T accept(ExprVisitor<T>& visitor) const override
     {
         return visitor.visitGroupingExpr(*this);
     }
@@ -72,13 +70,13 @@ class Grouping : public Expr<T>
 };
 
 template <typename T>
-class Literal : public Expr<T>
+class LiteralExpr : public Expr<T>
 {
   public:
-    Literal(std::string value) : value(value)
+    LiteralExpr(std::string value) : value(value)
     {
     }
-    T accept(Visitor<T>& visitor) const override
+    T accept(ExprVisitor<T>& visitor) const override
     {
         return visitor.visitLiteralExpr(*this);
     }
@@ -86,13 +84,13 @@ class Literal : public Expr<T>
 };
 
 template <typename T>
-class Unary : public Expr<T>
+class UnaryExpr : public Expr<T>
 {
   public:
-    Unary(Token op, const Expr<T>& right) : op(op), right(right)
+    UnaryExpr(Token op, const Expr<T>& right) : op(op), right(right)
     {
     }
-    T accept(Visitor<T>& visitor) const override
+    T accept(ExprVisitor<T>& visitor) const override
     {
         return visitor.visitUnaryExpr(*this);
     }
