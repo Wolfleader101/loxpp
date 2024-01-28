@@ -7,6 +7,8 @@
 #include "ILogger.hpp"
 #include "Token.hpp"
 
+#include "LoxType.hpp"
+
 class Scanner
 {
   public:
@@ -39,7 +41,7 @@ class Scanner
 
     void addToken(TokenType type);
 
-    void addToken(TokenType type, const std::string& literal);
+    void addToken(TokenType type, const LoxType& literal);
 
     bool match(char expected);
 

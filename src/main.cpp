@@ -10,6 +10,185 @@
 
 #include "Expr.hpp"
 
+#include "RuntimeError.hpp"
+
+class Interpreter : public ExprVisitor<LoxType>
+{
+  public:
+    Interpreter(ILogger& logger) : logger(logger)
+    {
+    }
+    void interpret(std::shared_ptr<Expr<LoxType>> expr)
+    {
+        try
+        {
+            LoxType value = evaluate(expr);
+            std::cout << LoxTypeToString(value) << std::endl;
+        }
+        catch (RuntimeError& error)
+        {
+            logger.LogRuntimeError(error);
+        }
+    }
+
+    LoxType visitLiteralExpr(const LiteralExpr<LoxType>& expr) override
+    {
+        return expr.value;
+    }
+
+    LoxType visitGroupingExpr(const GroupingExpr<LoxType>& expr) override
+    {
+        return evaluate(expr.expression);
+    }
+
+    LoxType visitUnaryExpr(const UnaryExpr<LoxType>& expr) override
+    {
+        LoxType right = evaluate(expr.right);
+
+        switch (expr.op.type)
+        {
+        case TokenType::BANG:
+            return !isTruthy(right);
+        case TokenType::MINUS:
+            checkNumberOperands(expr.op, right);
+            return -std::get<double>(right.value());
+        }
+
+        return LoxType();
+    }
+
+    LoxType visitBinaryExpr(const BinaryExpr<LoxType>& expr) override
+    {
+        LoxType left = evaluate(expr.left);
+        LoxType right = evaluate(expr.right);
+
+        switch (expr.op.type)
+        {
+        case TokenType::GREATER:
+            checkNumberOperands(expr.op, left, right);
+            return std::get<double>(left.value()) > std::get<double>(right.value());
+        case TokenType::GREATER_EQUAL:
+            checkNumberOperands(expr.op, left, right);
+            return std::get<double>(left.value()) >= std::get<double>(right.value());
+        case TokenType::LESS:
+            checkNumberOperands(expr.op, left, right);
+            return std::get<double>(left.value()) < std::get<double>(right.value());
+        case TokenType::LESS_EQUAL:
+            checkNumberOperands(expr.op, left, right);
+            return std::get<double>(left.value()) <= std::get<double>(right.value());
+        case TokenType::BANG_EQUAL:
+            return !isEqual(left, right);
+        case TokenType::EQUAL_EQUAL:
+            return isEqual(left, right);
+        case TokenType::MINUS:
+            checkNumberOperands(expr.op, left, right);
+            return std::get<double>(left.value()) - std::get<double>(right.value());
+        case TokenType::PLUS:
+            if (left.value().index() == 1 && right.value().index() == 1)
+            {
+                return std::get<double>(left.value()) + std::get<double>(right.value());
+            }
+
+            if (left.value().index() == 2 && right.value().index() == 2)
+            {
+                return std::get<std::string>(left.value()) + std::get<std::string>(right.value());
+            }
+
+            throw RuntimeError(expr.op, "Operands must be two numbers or two strings.");
+            break;
+        case TokenType::SLASH:
+            checkNumberOperands(expr.op, left, right);
+            return std::get<double>(left.value()) / std::get<double>(right.value());
+        case TokenType::STAR:
+            checkNumberOperands(expr.op, left, right);
+            return std::get<double>(left.value()) * std::get<double>(right.value());
+        }
+
+        return LoxType();
+    }
+
+  private:
+    ILogger& logger;
+
+    LoxType evaluate(std::shared_ptr<Expr<LoxType>> expr)
+    {
+        return expr->accept(*this);
+    }
+
+    bool isTruthy(const LoxType& object)
+    {
+        if (!object.has_value())
+        {
+            return false;
+        }
+
+        return std::visit(
+            [](const auto& value) -> bool {
+                using T = std::decay_t<decltype(value)>;
+
+                if constexpr (std::is_same_v<T, bool>)
+                {
+                    return value;
+                }
+                else
+                {
+                    return true;
+                }
+            },
+            object.value());
+    }
+
+    bool isEqual(const LoxType& a, const LoxType& b)
+    {
+        if (!a.has_value() && !b.has_value())
+        {
+            return true;
+        }
+
+        if (!a.has_value() || !b.has_value())
+        {
+            return false;
+        }
+
+        return std::visit(
+            [&b](const auto& aValue) -> bool {
+                return std::visit(
+                    [&aValue](const auto& bValue) -> bool {
+                        using Ta = std::decay_t<decltype(aValue)>;
+                        using Tb = std::decay_t<decltype(bValue)>;
+
+                        // if the types are different, they are not equal
+                        if constexpr (!std::is_same_v<Ta, Tb>)
+                        {
+                            return false;
+                        }
+                        else
+                        {
+                            return aValue == bValue;
+                        }
+                    },
+                    b.value());
+            },
+            a.value());
+    }
+
+    void checkNumberOperands(const Token& op, const LoxType& operand)
+    {
+        if (IsDouble(operand))
+            return;
+
+        throw RuntimeError(op, "Operand must be a number.");
+    }
+
+    void checkNumberOperands(const Token& op, const LoxType& left, const LoxType& right)
+    {
+        if (IsDouble(left) && IsDouble(right))
+            return;
+
+        throw RuntimeError(op, "Operands must be numbers.");
+    }
+};
+
 class ParseException : public std::exception
 {
   public:
@@ -33,7 +212,7 @@ class Parser
     {
     }
 
-    std::shared_ptr<Expr<std::string>> parse()
+    std::shared_ptr<Expr<LoxType>> parse()
     {
         try
         {
@@ -99,98 +278,98 @@ class Parser
         return tokens[current - 1];
     }
 
-    std::shared_ptr<Expr<std::string>> expression()
+    std::shared_ptr<Expr<LoxType>> expression()
     {
         return equality();
     }
 
-    std::shared_ptr<Expr<std::string>> equality()
+    std::shared_ptr<Expr<LoxType>> equality()
     {
-        std::shared_ptr<Expr<std::string>> expr = comparison();
+        std::shared_ptr<Expr<LoxType>> expr = comparison();
 
         while (match({TokenType::BANG_EQUAL, TokenType::EQUAL_EQUAL}))
         {
             Token op = previous();
-            std::shared_ptr<Expr<std::string>> right = comparison();
-            expr = std::make_shared<BinaryExpr<std::string>>(expr, op, right);
+            std::shared_ptr<Expr<LoxType>> right = comparison();
+            expr = std::make_shared<BinaryExpr<LoxType>>(expr, op, right);
         }
 
         return expr;
     }
 
-    std::shared_ptr<Expr<std::string>> comparison()
+    std::shared_ptr<Expr<LoxType>> comparison()
     {
-        std::shared_ptr<Expr<std::string>> expr = term();
+        std::shared_ptr<Expr<LoxType>> expr = term();
 
         while (match({TokenType::GREATER, TokenType::GREATER_EQUAL, TokenType::LESS, TokenType::LESS_EQUAL}))
         {
             Token op = previous();
-            std::shared_ptr<Expr<std::string>> right = term();
-            expr = std::make_shared<BinaryExpr<std::string>>(expr, op, right);
+            std::shared_ptr<Expr<LoxType>> right = term();
+            expr = std::make_shared<BinaryExpr<LoxType>>(expr, op, right);
         }
 
         return expr;
     }
 
-    std::shared_ptr<Expr<std::string>> term()
+    std::shared_ptr<Expr<LoxType>> term()
     {
-        std::shared_ptr<Expr<std::string>> expr = factor();
+        std::shared_ptr<Expr<LoxType>> expr = factor();
 
         while (match({TokenType::MINUS, TokenType::PLUS}))
         {
             Token op = previous();
-            std::shared_ptr<Expr<std::string>> right = factor();
-            expr = std::make_shared<BinaryExpr<std::string>>(expr, op, right);
+            std::shared_ptr<Expr<LoxType>> right = factor();
+            expr = std::make_shared<BinaryExpr<LoxType>>(expr, op, right);
         }
 
         return expr;
     }
 
-    std::shared_ptr<Expr<std::string>> factor()
+    std::shared_ptr<Expr<LoxType>> factor()
     {
-        std::shared_ptr<Expr<std::string>> expr = unary();
+        std::shared_ptr<Expr<LoxType>> expr = unary();
 
         while (match({TokenType::SLASH, TokenType::STAR}))
         {
             Token op = previous();
-            std::shared_ptr<Expr<std::string>> right = unary();
-            expr = std::make_shared<BinaryExpr<std::string>>(expr, op, right);
+            std::shared_ptr<Expr<LoxType>> right = unary();
+            expr = std::make_shared<BinaryExpr<LoxType>>(expr, op, right);
         }
 
         return expr;
     }
 
-    std::shared_ptr<Expr<std::string>> unary()
+    std::shared_ptr<Expr<LoxType>> unary()
     {
         if (match({TokenType::BANG, TokenType::MINUS}))
         {
             Token op = previous();
-            std::shared_ptr<Expr<std::string>> right = unary();
-            return std::make_shared<UnaryExpr<std::string>>(op, right);
+            std::shared_ptr<Expr<LoxType>> right = unary();
+            return std::make_shared<UnaryExpr<LoxType>>(op, right);
         }
 
         return primary();
     }
 
-    std::shared_ptr<Expr<std::string>> primary()
+    std::shared_ptr<Expr<LoxType>> primary()
     {
         if (match({TokenType::FALSE}))
-            return std::make_shared<LiteralExpr<std::string>>("false");
+            return std::make_shared<LiteralExpr<LoxType>>("false");
 
         if (match({TokenType::TRUE}))
-            return std::make_shared<LiteralExpr<std::string>>("true");
+            return std::make_shared<LiteralExpr<LoxType>>("true");
 
         if (match({TokenType::NIL}))
-            return std::make_shared<LiteralExpr<std::string>>("nil");
+            return std::make_shared<LiteralExpr<LoxType>>("nil");
 
         if (match({TokenType::NUMBER, TokenType::STRING}))
-            return std::make_shared<LiteralExpr<std::string>>(previous().literal);
+            return std::make_shared<LiteralExpr<LoxType>>(previous().literal);
 
         if (match({TokenType::LEFT_PAREN}))
         {
-            std::shared_ptr<Expr<std::string>> expr = expression();
+            std::shared_ptr<Expr<LoxType>> expr = expression();
             consume(TokenType::RIGHT_PAREN, "Expect ')' after expression.");
-            return std::make_shared<GroupingExpr<std::string>>(expr);
+            return std::make_shared<GroupingExpr<LoxType>>(expr);
         }
 
         throw error(peek(), "Expect expression.");
@@ -247,50 +426,6 @@ class Parser
     }
 };
 
-class AstPrinter : public ExprVisitor<std::string>
-{
-  public:
-    std::string print(std::shared_ptr<Expr<std::string>> expr)
-    {
-        return expr->accept(*this);
-    }
-
-    std::string visitBinaryExpr(const BinaryExpr<std::string>& expr) override
-    {
-        return parenthesize(expr.op.lexeme, {expr.left, expr.right});
-    }
-
-    std::string visitGroupingExpr(const GroupingExpr<std::string>& expr) override
-    {
-        return parenthesize("group", {expr.expression});
-    }
-
-    std::string visitLiteralExpr(const LiteralExpr<std::string>& expr) override
-    {
-        return expr.value;
-    }
-
-    std::string visitUnaryExpr(const UnaryExpr<std::string>& expr) override
-    {
-        return parenthesize(expr.op.lexeme, {expr.right});
-    }
-
-  private:
-    std::string parenthesize(const std::string& name, std::vector<std::shared_ptr<Expr<std::string>>> exprs)
-    {
-        std::string builder = "(" + name;
-
-        for (const auto& expr : exprs)
-        {
-            builder += " " + print(expr);
-        }
-
-        builder += ")";
-
-        return builder;
-    }
-};
-
 void runCode(std::string& code);
 
 void runFile(const char* path);
@@ -299,6 +434,7 @@ void runPrompt();
 void reportError(int line, const std::string& where, const std::string& message);
 
 static bool hadError = false;
+static bool hadRuntimeError = false;
 
 class LoxppLogger : public ILogger
 {
@@ -311,9 +447,17 @@ class LoxppLogger : public ILogger
     {
         reportError(line, where, message);
     }
+
+    void LogRuntimeError(const RuntimeError& error) override
+    {
+        std::cerr << error.what() << std::endl;
+        std::cerr << "[line " << error.token.line << "] " << error.message << std::endl;
+        hadRuntimeError = true;
+    }
 };
 
 static LoxppLogger logger;
+static Interpreter interpreter(logger);
 
 int main(int argc, char** argv)
 {
@@ -347,9 +491,10 @@ void runFile(const char* path)
         runCode(file_contents);
 
         if (hadError)
-        {
             exit(65);
-        }
+
+        if (hadRuntimeError)
+            exit(70);
     }
     else
     {
@@ -382,15 +527,20 @@ void runCode(std::string& code)
     std::vector<Token> tokens = scanner.scanTokens();
     Parser parser = Parser(tokens, logger);
 
-    std::shared_ptr<Expr<std::string>> expression = parser.parse();
+    std::shared_ptr<Expr<LoxType>> expression = parser.parse();
 
     if (expression == nullptr)
     {
         return;
     }
 
-    AstPrinter printer;
-    std::cout << printer.print(expression) << std::endl;
+    if (hadError)
+        return;
+
+    interpreter.interpret(expression);
+
+    // AstPrinter printer;
+    // std::cout << printer.print(expression) << std::endl;
 }
 
 void reportError(int line, const std::string& where, const std::string& message)

@@ -1,7 +1,10 @@
+#pragma once
+
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "LoxType.hpp"
 #include "Token.hpp"
 
 template <typename T>
@@ -75,14 +78,15 @@ template <typename T>
 class LiteralExpr : public Expr<T>
 {
   public:
-    LiteralExpr(std::string value) : value(value)
+    LiteralExpr(LoxType value) : value(value)
     {
     }
     T accept(ExprVisitor<T>& visitor) const override
     {
         return visitor.visitLiteralExpr(*this);
     }
-    std::string value;
+
+    LoxType value;
 };
 
 template <typename T>

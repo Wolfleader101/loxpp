@@ -119,10 +119,10 @@ char Scanner::advance()
 
 void Scanner::addToken(TokenType type)
 {
-    addToken(type, "");
+    addToken(type, std::nullopt);
 }
 
-void Scanner::addToken(TokenType type, const std::string& literal)
+void Scanner::addToken(TokenType type, const LoxType& literal)
 {
     std::string text = source.substr(start, current - start);
     tokens.push_back(Token(type, text, literal, line));
@@ -201,7 +201,7 @@ void Scanner::readNumber()
         }
     }
 
-    addToken(TokenType::NUMBER, source.substr(start, current - start));
+    addToken(TokenType::NUMBER, std::stod(source.substr(start, current - start)));
 }
 
 char Scanner::peekNext()

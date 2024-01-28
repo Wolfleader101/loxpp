@@ -44,7 +44,7 @@ int main(int argc, char** argv)
               {
                   "Binary   : std::shared_ptr<Expr<T>> left, Token op, std::shared_ptr<Expr<T>> right", // Binary class
                   "Grouping : std::shared_ptr<Expr<T>> expression",     // Grouping class
-                  "Literal  : std::string value",                       // Literal class
+                  "Literal  : LoxType value",                           // Literal class
                   "Unary    : Token op, std::shared_ptr<Expr<T>> right" // Unary class
               });
 
@@ -59,10 +59,12 @@ void defineAst(const std::string& outputDir, const std::string& baseName, const 
     std::fstream outputFile;
     outputFile.open(path, std::ios::out);
 
+    outputFile << "#pragma once" << std::endl;
     outputFile << "#include <string>" << std::endl;
     outputFile << "#include <vector>" << std::endl;
     outputFile << "#include <memory>" << std::endl << std::endl;
 
+    outputFile << "#include \"LoxType.hpp\"" << std::endl;
     outputFile << "#include \"Token.hpp\"" << std::endl << std::endl;
 
     outputFile << "template <typename T>" << std::endl;

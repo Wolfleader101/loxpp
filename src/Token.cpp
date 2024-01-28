@@ -1,6 +1,6 @@
 #include "Token.hpp"
 
-constexpr const char *TokenTypeToString(TokenType type)
+constexpr const char* TokenTypeToString(TokenType type)
 {
     switch (type)
     {
@@ -85,7 +85,12 @@ constexpr const char *TokenTypeToString(TokenType type)
     }
 };
 
-Token::Token(TokenType type, const std::string &lexeme, const std::string &literal, int line)
-    : type(type), lexeme(lexeme), literal(literal), line(line) {}
+Token::Token(TokenType type, const std::string& lexeme, const LoxType& literal, int line)
+    : type(type), lexeme(lexeme), literal(literal), line(line)
+{
+}
 
-std::string Token::toString() { return std::string(TokenTypeToString(type)) + " " + lexeme + " " + literal; }
+std::string Token::toString()
+{
+    return std::string(TokenTypeToString(type)) + " " + lexeme + " " + LoxTypeToString(literal);
+}

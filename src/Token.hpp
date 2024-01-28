@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include "LoxType.hpp"
+
 enum class TokenType
 {
     // single char tokens
@@ -58,12 +60,12 @@ constexpr const char* TokenTypeToString(TokenType type);
 class Token
 {
   public:
-    Token(TokenType type, const std::string& lexeme, const std::string& literal, int line);
+    Token(TokenType type, const std::string& lexeme, const LoxType& literal, int line);
 
     std::string toString();
 
     TokenType type;
     std::string lexeme;
-    std::string literal;
+    LoxType literal;
     int line;
 };
