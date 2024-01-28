@@ -84,12 +84,12 @@ class Interpreter : public ExprVisitor<LoxType>
             checkNumberOperands(expr.op, left, right);
             return std::get<double>(left.value()) - std::get<double>(right.value());
         case TokenType::PLUS:
-            if (left.value().index() == 1 && right.value().index() == 1)
+            if (IsDouble(left) && IsDouble(right))
             {
                 return std::get<double>(left.value()) + std::get<double>(right.value());
             }
 
-            if (left.value().index() == 2 && right.value().index() == 2)
+            if (IsString(left) && IsString(right))
             {
                 return std::get<std::string>(left.value()) + std::get<std::string>(right.value());
             }
