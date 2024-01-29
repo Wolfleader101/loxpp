@@ -42,10 +42,20 @@ int main(int argc, char** argv)
 
     defineAst(output_dir, "Expr",
               {
+                  "Assign   : Token name, std::shared_ptr<Expr<T>> value",                              // Assign class
                   "Binary   : std::shared_ptr<Expr<T>> left, Token op, std::shared_ptr<Expr<T>> right", // Binary class
-                  "Grouping : std::shared_ptr<Expr<T>> expression",     // Grouping class
-                  "Literal  : LoxType value",                           // Literal class
-                  "Unary    : Token op, std::shared_ptr<Expr<T>> right" // Unary class
+                  "Grouping : std::shared_ptr<Expr<T>> expression",      // Grouping class
+                  "Literal  : LoxType value",                            // Literal class
+                  "Unary    : Token op, std::shared_ptr<Expr<T>> right", // Unary class
+                  "Variable : Token name"                                // Variable class
+              });
+
+    defineAst(output_dir, "Stmt",
+              {
+                  "Block      : std::vector<std::shared_ptr<Stmt<T>>> statements", // Block class
+                  "Expression : std::shared_ptr<Expr<T>> expression",              // Expression class
+                  "Print      : std::shared_ptr<Expr<T>> expression",              // Print class
+                  "Var        : Token name, std::shared_ptr<Expr<T>> initializer"  // Var class
               });
 
     return 0;

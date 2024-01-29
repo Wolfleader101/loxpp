@@ -1,11 +1,14 @@
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <type_traits>
 #include <variant>
 
 using LoxType = std::optional<std::variant<bool, double, std::string>>;
+
+using LoxTypeRef = std::shared_ptr<LoxType>;
 
 constexpr std::size_t BOOL_INDEX =
     std::variant_size_v<std::decay_t<decltype(*std::declval<LoxType>().operator->())>> == 0 ? -1 : 0;

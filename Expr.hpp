@@ -17,9 +17,6 @@ public:
 };
 
 template<typename T>
-    class AssignExpr;
-
-template<typename T>
     class BinaryExpr;
 
 template<typename T>
@@ -31,16 +28,11 @@ template<typename T>
 template<typename T>
     class UnaryExpr;
 
-template<typename T>
-    class VariableExpr;
-
 template <typename T>
 class ExprVisitor
 {
 public:
     virtual ~ExprVisitor() = default;
-    virtual T visitAssignExpr(const AssignExpr<T>& expr) = 0;
-
     virtual T visitBinaryExpr(const BinaryExpr<T>& expr) = 0;
 
     virtual T visitGroupingExpr(const GroupingExpr<T>& expr) = 0;
@@ -49,25 +41,7 @@ public:
 
     virtual T visitUnaryExpr(const UnaryExpr<T>& expr) = 0;
 
-    virtual T visitVariableExpr(const VariableExpr<T>& expr) = 0;
-
 };
-template<typename T>
-class AssignExpr : public Expr<T>
-{
-public:
-    AssignExpr(Token name, std::shared_ptr<Expr<T>> value)
-        : name(name), value(value)
-    {
-    }
-    T accept(ExprVisitor<T>& visitor) const override
-    {
-        return visitor.visitAssignExpr(*this);
-    }
-    Token name;
-    std::shared_ptr<Expr<T>> value;
-};
-
 template<typename T>
 class BinaryExpr : public Expr<T>
 {
@@ -129,20 +103,5 @@ public:
     }
     Token op;
     std::shared_ptr<Expr<T>> right;
-};
-
-template<typename T>
-class VariableExpr : public Expr<T>
-{
-public:
-    VariableExpr(Token name)
-        : name(name)
-    {
-    }
-    T accept(ExprVisitor<T>& visitor) const override
-    {
-        return visitor.visitVariableExpr(*this);
-    }
-    Token name;
 };
 
