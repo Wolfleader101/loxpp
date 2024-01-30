@@ -54,13 +54,23 @@ class Parser
 
     std::shared_ptr<Stmt<LoxType>> block();
 
+    std::shared_ptr<Stmt<LoxType>> ifStatement();
+
     std::shared_ptr<Stmt<LoxType>> printStatement();
 
     std::shared_ptr<Stmt<LoxType>> expressionStatement();
 
+    std::shared_ptr<Stmt<LoxType>> whileStatement();
+
+    std::shared_ptr<Stmt<LoxType>> forStatement();
+
     std::shared_ptr<Expr<LoxType>> assignment();
 
     std::shared_ptr<Expr<LoxType>> expression();
+
+    std::shared_ptr<Expr<LoxType>> orExpr();
+
+    std::shared_ptr<Expr<LoxType>> andExpr();
 
     std::shared_ptr<Expr<LoxType>> equality();
 

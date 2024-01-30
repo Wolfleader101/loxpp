@@ -28,6 +28,8 @@ class Interpreter : public ExprVisitor<LoxType>, public StmtVisitor<LoxType>
 
     LoxType visitAssignExpr(const AssignExpr<LoxType>& expr) override;
 
+    LoxType visitLogicalExpr(const LogicalExpr<LoxType>& expr) override;
+
     LoxType visitExpressionStmt(const ExpressionStmt<LoxType>& stmt) override;
 
     LoxType visitPrintStmt(const PrintStmt<LoxType>& stmt) override;
@@ -35,6 +37,10 @@ class Interpreter : public ExprVisitor<LoxType>, public StmtVisitor<LoxType>
     LoxType visitVarStmt(const VarStmt<LoxType>& stmt) override;
 
     LoxType visitBlockStmt(const BlockStmt<LoxType>& stmt) override;
+
+    LoxType visitIfStmt(const IfStmt<LoxType>& stmt) override;
+
+    LoxType visitWhileStmt(const WhileStmt<LoxType>& stmt) override;
 
   private:
     ILogger& logger;

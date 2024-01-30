@@ -25,10 +25,16 @@ template <typename T>
 class ExpressionStmt;
 
 template <typename T>
+class IfStmt;
+
+template <typename T>
 class PrintStmt;
 
 template <typename T>
 class VarStmt;
+
+template <typename T>
+class WhileStmt;
 
 template <typename T>
 class StmtVisitor
@@ -39,9 +45,13 @@ class StmtVisitor
 
     virtual T visitExpressionStmt(const ExpressionStmt<T>& stmt) = 0;
 
+    virtual T visitIfStmt(const IfStmt<T>& stmt) = 0;
+
     virtual T visitPrintStmt(const PrintStmt<T>& stmt) = 0;
 
     virtual T visitVarStmt(const VarStmt<T>& stmt) = 0;
+
+    virtual T visitWhileStmt(const WhileStmt<T>& stmt) = 0;
 };
 template <typename T>
 class BlockStmt : public Stmt<T>
@@ -72,6 +82,23 @@ class ExpressionStmt : public Stmt<T>
 };
 
 template <typename T>
+class IfStmt : public Stmt<T>
+{
+  public:
+    IfStmt(std::shared_ptr<Expr<T>> condition, std::shared_ptr<Stmt<T>> thenBranch, std::shared_ptr<Stmt<T>> elseBranch)
+        : condition(condition), thenBranch(thenBranch), elseBranch(elseBranch)
+    {
+    }
+    T accept(StmtVisitor<T>& visitor) const override
+    {
+        return visitor.visitIfStmt(*this);
+    }
+    std::shared_ptr<Expr<T>> condition;
+    std::shared_ptr<Stmt<T>> thenBranch;
+    std::shared_ptr<Stmt<T>> elseBranch;
+};
+
+template <typename T>
 class PrintStmt : public Stmt<T>
 {
   public:
@@ -98,4 +125,19 @@ class VarStmt : public Stmt<T>
     }
     Token name;
     std::shared_ptr<Expr<T>> initializer;
+};
+
+template <typename T>
+class WhileStmt : public Stmt<T>
+{
+  public:
+    WhileStmt(std::shared_ptr<Expr<T>> condition, std::shared_ptr<Stmt<T>> body) : condition(condition), body(body)
+    {
+    }
+    T accept(StmtVisitor<T>& visitor) const override
+    {
+        return visitor.visitWhileStmt(*this);
+    }
+    std::shared_ptr<Expr<T>> condition;
+    std::shared_ptr<Stmt<T>> body;
 };

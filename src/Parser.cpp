@@ -108,9 +108,24 @@ std::shared_ptr<Stmt<LoxType>> Parser::varDeclaration()
 
 std::shared_ptr<Stmt<LoxType>> Parser::statement()
 {
+    if (match({TokenType::FOR}))
+    {
+        return forStatement();
+    }
+
+    if (match({TokenType::IF}))
+    {
+        return ifStatement();
+    }
+
     if (match({TokenType::PRINT}))
     {
         return printStatement();
+    }
+
+    if (match({TokenType::WHILE}))
+    {
+        return whileStatement();
     }
 
     if (match({TokenType::LEFT_BRACE}))
@@ -119,6 +134,94 @@ std::shared_ptr<Stmt<LoxType>> Parser::statement()
     }
 
     return expressionStatement();
+}
+
+std::shared_ptr<Stmt<LoxType>> Parser::ifStatement()
+{
+    consume(TokenType::LEFT_PAREN, "Expect '(' after 'if'.");
+    std::shared_ptr<Expr<LoxType>> condition = expression();
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after if condition.");
+
+    std::shared_ptr<Stmt<LoxType>> thenBranch = statement();
+    std::shared_ptr<Stmt<LoxType>> elseBranch = nullptr;
+
+    if (match({TokenType::ELSE}))
+    {
+        elseBranch = statement();
+    }
+
+    return std::make_shared<IfStmt<LoxType>>(condition, thenBranch, elseBranch);
+}
+
+std::shared_ptr<Stmt<LoxType>> Parser::whileStatement()
+{
+    consume(TokenType::LEFT_PAREN, "Expect '(' after 'while'.");
+    std::shared_ptr<Expr<LoxType>> condition = expression();
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after condition.");
+    std::shared_ptr<Stmt<LoxType>> body = statement();
+
+    return std::make_shared<WhileStmt<LoxType>>(condition, body);
+}
+
+std::shared_ptr<Stmt<LoxType>> Parser::forStatement()
+{
+    consume(TokenType::LEFT_PAREN, "Expect '(' after 'for'.");
+
+    std::shared_ptr<Stmt<LoxType>> initializer;
+    if (match({TokenType::SEMICOLON}))
+    {
+        initializer = nullptr;
+    }
+    else if (match({TokenType::VAR}))
+    {
+        initializer = varDeclaration();
+    }
+    else
+    {
+        initializer = expressionStatement();
+    }
+
+    std::shared_ptr<Expr<LoxType>> condition = nullptr;
+    if (!check(TokenType::SEMICOLON))
+    {
+        condition = expression();
+    }
+    consume(TokenType::SEMICOLON, "Expect ';' after loop condition.");
+
+    std::shared_ptr<Expr<LoxType>> increment = nullptr;
+    if (!check(TokenType::RIGHT_PAREN))
+    {
+        increment = expression();
+    }
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    std::shared_ptr<Stmt<LoxType>> body = statement();
+
+    if (increment != nullptr)
+    {
+        std::vector<std::shared_ptr<Stmt<LoxType>>> statements;
+        statements.push_back(body);
+        statements.push_back(std::make_shared<ExpressionStmt<LoxType>>(increment));
+
+        body = std::make_shared<BlockStmt<LoxType>>(statements);
+    }
+
+    if (condition == nullptr)
+    {
+        condition = std::make_shared<LiteralExpr<LoxType>>(true);
+    }
+    body = std::make_shared<WhileStmt<LoxType>>(condition, body);
+
+    if (initializer != nullptr)
+    {
+        std::vector<std::shared_ptr<Stmt<LoxType>>> statements;
+        statements.push_back(initializer);
+        statements.push_back(body);
+
+        body = std::make_shared<BlockStmt<LoxType>>(statements);
+    }
+
+    return body;
 }
 
 std::shared_ptr<Stmt<LoxType>> Parser::block()
@@ -155,7 +258,7 @@ std::shared_ptr<Expr<LoxType>> Parser::expression()
 
 std::shared_ptr<Expr<LoxType>> Parser::assignment()
 {
-    std::shared_ptr<Expr<LoxType>> expr = equality();
+    std::shared_ptr<Expr<LoxType>> expr = orExpr();
 
     if (match({TokenType::EQUAL}))
     {
@@ -169,6 +272,34 @@ std::shared_ptr<Expr<LoxType>> Parser::assignment()
         }
 
         error(equals, "Invalid assignment target.");
+    }
+
+    return expr;
+}
+
+std::shared_ptr<Expr<LoxType>> Parser::orExpr()
+{
+    std::shared_ptr<Expr<LoxType>> expr = andExpr();
+
+    while (match({TokenType::OR}))
+    {
+        Token op = previous();
+        std::shared_ptr<Expr<LoxType>> right = andExpr();
+        expr = std::make_shared<LogicalExpr<LoxType>>(expr, op, right);
+    }
+
+    return expr;
+}
+
+std::shared_ptr<Expr<LoxType>> Parser::andExpr()
+{
+    std::shared_ptr<Expr<LoxType>> expr = equality();
+
+    while (match({TokenType::AND}))
+    {
+        Token op = previous();
+        std::shared_ptr<Expr<LoxType>> right = equality();
+        expr = std::make_shared<LogicalExpr<LoxType>>(expr, op, right);
     }
 
     return expr;
@@ -245,13 +376,13 @@ std::shared_ptr<Expr<LoxType>> Parser::unary()
 std::shared_ptr<Expr<LoxType>> Parser::primary()
 {
     if (match({TokenType::FALSE}))
-        return std::make_shared<LiteralExpr<LoxType>>("false");
+        return std::make_shared<LiteralExpr<LoxType>>(false);
 
     if (match({TokenType::TRUE}))
-        return std::make_shared<LiteralExpr<LoxType>>("true");
+        return std::make_shared<LiteralExpr<LoxType>>(true);
 
     if (match({TokenType::NIL}))
-        return std::make_shared<LiteralExpr<LoxType>>("nil");
+        return std::make_shared<LiteralExpr<LoxType>>(std::nullopt);
 
     if (match({TokenType::NUMBER, TokenType::STRING}))
         return std::make_shared<LiteralExpr<LoxType>>(previous().literal);

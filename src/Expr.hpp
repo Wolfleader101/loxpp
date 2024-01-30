@@ -29,6 +29,9 @@ template<typename T>
     class LiteralExpr;
 
 template<typename T>
+    class LogicalExpr;
+
+template<typename T>
     class UnaryExpr;
 
 template<typename T>
@@ -46,6 +49,8 @@ public:
     virtual T visitGroupingExpr(const GroupingExpr<T>& expr) = 0;
 
     virtual T visitLiteralExpr(const LiteralExpr<T>& expr) = 0;
+
+    virtual T visitLogicalExpr(const LogicalExpr<T>& expr) = 0;
 
     virtual T visitUnaryExpr(const UnaryExpr<T>& expr) = 0;
 
@@ -113,6 +118,23 @@ public:
         return visitor.visitLiteralExpr(*this);
     }
     LoxType value;
+};
+
+template<typename T>
+class LogicalExpr : public Expr<T>
+{
+public:
+    LogicalExpr(std::shared_ptr<Expr<T>> left, Token op, std::shared_ptr<Expr<T>> right)
+        : left(left), op(op), right(right)
+    {
+    }
+    T accept(ExprVisitor<T>& visitor) const override
+    {
+        return visitor.visitLogicalExpr(*this);
+    }
+    std::shared_ptr<Expr<T>> left;
+    Token op;
+    std::shared_ptr<Expr<T>> right;
 };
 
 template<typename T>

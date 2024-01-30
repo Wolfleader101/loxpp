@@ -112,6 +112,24 @@ LoxType Interpreter::visitAssignExpr(const AssignExpr<LoxType>& expr)
     return value;
 }
 
+LoxType Interpreter::visitLogicalExpr(const LogicalExpr<LoxType>& expr)
+{
+    LoxType left = evaluate(expr.left);
+
+    if (expr.op.type == TokenType::OR)
+    {
+        if (isTruthy(left))
+            return left;
+    }
+    else
+    {
+        if (!isTruthy(left))
+            return left;
+    }
+
+    return evaluate(expr.right);
+}
+
 LoxType Interpreter::visitExpressionStmt(const ExpressionStmt<LoxType>& stmt)
 {
     evaluate(stmt.expression);
@@ -130,6 +148,29 @@ LoxType Interpreter::visitPrintStmt(const PrintStmt<LoxType>& stmt)
 LoxType Interpreter::visitBlockStmt(const BlockStmt<LoxType>& stmt)
 {
     executeBlock(stmt.statements, std::make_shared<Environment>(environment));
+
+    return std::nullopt;
+}
+LoxType Interpreter::visitIfStmt(const IfStmt<LoxType>& stmt)
+{
+    if (isTruthy(evaluate(stmt.condition)))
+    {
+        execute(stmt.thenBranch);
+    }
+    else if (stmt.elseBranch != nullptr)
+    {
+        execute(stmt.elseBranch);
+    }
+
+    return std::nullopt;
+}
+
+LoxType Interpreter::visitWhileStmt(const WhileStmt<LoxType>& stmt)
+{
+    while (isTruthy(evaluate(stmt.condition)))
+    {
+        execute(stmt.body);
+    }
 
     return std::nullopt;
 }
