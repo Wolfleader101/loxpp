@@ -115,7 +115,7 @@ void runCode(std::string& code)
     Scanner scanner = Scanner(code, logger);
     std::vector<Token> tokens = scanner.scanTokens();
     Parser parser = Parser(tokens, logger);
-    std::vector<std::shared_ptr<Stmt<LoxType>>> statements = parser.parse();
+    std::vector<std::shared_ptr<Stmt<LoxTypeRef>>> statements = parser.parse();
 
     if (hadError)
         return;

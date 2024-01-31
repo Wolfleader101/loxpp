@@ -23,6 +23,10 @@ std::string LoxTypeToString(const LoxType& var)
                 oss << value;
                 return oss.str();
             }
+            else if constexpr (std::is_same_v<T, std::shared_ptr<LoxCallable>>)
+            {
+                return "callable";
+            }
             else
             {
                 // if its a string

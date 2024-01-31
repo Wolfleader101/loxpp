@@ -44,8 +44,10 @@ int main(int argc, char** argv)
               {
                   "Assign   : Token name, std::shared_ptr<Expr<T>> value",                              // Assign class
                   "Binary   : std::shared_ptr<Expr<T>> left, Token op, std::shared_ptr<Expr<T>> right", // Binary class
+                  "Call    : std::shared_ptr<Expr<T>> callee, Token paren, std::vector<std::shared_ptr<Expr<T>>> "
+                  "arguments",                                      // Call class
                   "Grouping : std::shared_ptr<Expr<T>> expression", // Grouping class
-                  "Literal  : LoxType value",                       // Literal class
+                  "Literal  : LoxTypeRef value",                    // Literal class
                   "Logical  : std::shared_ptr<Expr<T>> left, Token op, std::shared_ptr<Expr<T>> right", // Logical class
                   "Unary    : Token op, std::shared_ptr<Expr<T>> right",                                // Unary class
                   "Variable : Token name" // Variable class

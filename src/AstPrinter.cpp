@@ -17,7 +17,7 @@ std::string AstPrinter::visitGroupingExpr(const GroupingExpr<std::string>& expr)
 
 std::string AstPrinter::visitLiteralExpr(const LiteralExpr<std::string>& expr)
 {
-    return LoxTypeToString(expr.value);
+    return LoxTypeToString(*expr.value);
 }
 
 std::string AstPrinter::visitUnaryExpr(const UnaryExpr<std::string>& expr)

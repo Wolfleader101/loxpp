@@ -27,7 +27,7 @@ class Parser
   public:
     Parser(const std::vector<Token>& tokens, ILogger& logger);
 
-    std::vector<std::shared_ptr<Stmt<LoxType>>> parse();
+    std::vector<std::shared_ptr<Stmt<LoxTypeRef>>> parse();
 
   private:
     const std::vector<Token>& tokens;
@@ -46,43 +46,47 @@ class Parser
 
     Token previous();
 
-    std::shared_ptr<Stmt<LoxType>> declaration();
+    std::shared_ptr<Stmt<LoxTypeRef>> declaration();
 
-    std::shared_ptr<Stmt<LoxType>> varDeclaration();
+    std::shared_ptr<Stmt<LoxTypeRef>> varDeclaration();
 
-    std::shared_ptr<Stmt<LoxType>> statement();
+    std::shared_ptr<Stmt<LoxTypeRef>> statement();
 
-    std::shared_ptr<Stmt<LoxType>> block();
+    std::shared_ptr<Stmt<LoxTypeRef>> block();
 
-    std::shared_ptr<Stmt<LoxType>> ifStatement();
+    std::shared_ptr<Stmt<LoxTypeRef>> ifStatement();
 
-    std::shared_ptr<Stmt<LoxType>> printStatement();
+    std::shared_ptr<Stmt<LoxTypeRef>> printStatement();
 
-    std::shared_ptr<Stmt<LoxType>> expressionStatement();
+    std::shared_ptr<Stmt<LoxTypeRef>> expressionStatement();
 
-    std::shared_ptr<Stmt<LoxType>> whileStatement();
+    std::shared_ptr<Stmt<LoxTypeRef>> whileStatement();
 
-    std::shared_ptr<Stmt<LoxType>> forStatement();
+    std::shared_ptr<Stmt<LoxTypeRef>> forStatement();
 
-    std::shared_ptr<Expr<LoxType>> assignment();
+    std::shared_ptr<Expr<LoxTypeRef>> assignment();
 
-    std::shared_ptr<Expr<LoxType>> expression();
+    std::shared_ptr<Expr<LoxTypeRef>> expression();
 
-    std::shared_ptr<Expr<LoxType>> orExpr();
+    std::shared_ptr<Expr<LoxTypeRef>> orExpr();
 
-    std::shared_ptr<Expr<LoxType>> andExpr();
+    std::shared_ptr<Expr<LoxTypeRef>> andExpr();
 
-    std::shared_ptr<Expr<LoxType>> equality();
+    std::shared_ptr<Expr<LoxTypeRef>> equality();
 
-    std::shared_ptr<Expr<LoxType>> comparison();
+    std::shared_ptr<Expr<LoxTypeRef>> comparison();
 
-    std::shared_ptr<Expr<LoxType>> term();
+    std::shared_ptr<Expr<LoxTypeRef>> term();
 
-    std::shared_ptr<Expr<LoxType>> factor();
+    std::shared_ptr<Expr<LoxTypeRef>> factor();
 
-    std::shared_ptr<Expr<LoxType>> unary();
+    std::shared_ptr<Expr<LoxTypeRef>> unary();
 
-    std::shared_ptr<Expr<LoxType>> primary();
+    std::shared_ptr<Expr<LoxTypeRef>> call();
+
+    std::shared_ptr<Expr<LoxTypeRef>> finishCall(std::shared_ptr<Expr<LoxTypeRef>> callee);
+
+    std::shared_ptr<Expr<LoxTypeRef>> primary();
 
     Token consume(TokenType type, const std::string& message);
 

@@ -9,54 +9,64 @@
 #include "LoxType.hpp"
 #include "Stmt.hpp"
 
-class Interpreter : public ExprVisitor<LoxType>, public StmtVisitor<LoxType>
+class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRef>
 {
   public:
     Interpreter(ILogger& logger);
 
-    void interpret(std::vector<std::shared_ptr<Stmt<LoxType>>> statements);
+    void interpret(std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements);
 
-    LoxType visitLiteralExpr(const LiteralExpr<LoxType>& expr) override;
+    LoxTypeRef visitLiteralExpr(const LiteralExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitGroupingExpr(const GroupingExpr<LoxType>& expr) override;
+    LoxTypeRef visitGroupingExpr(const GroupingExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitUnaryExpr(const UnaryExpr<LoxType>& expr) override;
+    LoxTypeRef visitUnaryExpr(const UnaryExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitBinaryExpr(const BinaryExpr<LoxType>& expr) override;
+    LoxTypeRef visitCallExpr(const CallExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitVariableExpr(const VariableExpr<LoxType>& expr) override;
+    LoxTypeRef visitBinaryExpr(const BinaryExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitAssignExpr(const AssignExpr<LoxType>& expr) override;
+    LoxTypeRef visitVariableExpr(const VariableExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitLogicalExpr(const LogicalExpr<LoxType>& expr) override;
+    LoxTypeRef visitAssignExpr(const AssignExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitExpressionStmt(const ExpressionStmt<LoxType>& stmt) override;
+    LoxTypeRef visitLogicalExpr(const LogicalExpr<LoxTypeRef>& expr) override;
 
-    LoxType visitPrintStmt(const PrintStmt<LoxType>& stmt) override;
+    LoxTypeRef visitExpressionStmt(const ExpressionStmt<LoxTypeRef>& stmt) override;
 
-    LoxType visitVarStmt(const VarStmt<LoxType>& stmt) override;
+    LoxTypeRef visitPrintStmt(const PrintStmt<LoxTypeRef>& stmt) override;
 
-    LoxType visitBlockStmt(const BlockStmt<LoxType>& stmt) override;
+    LoxTypeRef visitVarStmt(const VarStmt<LoxTypeRef>& stmt) override;
 
-    LoxType visitIfStmt(const IfStmt<LoxType>& stmt) override;
+    LoxTypeRef visitBlockStmt(const BlockStmt<LoxTypeRef>& stmt) override;
 
-    LoxType visitWhileStmt(const WhileStmt<LoxType>& stmt) override;
+    LoxTypeRef visitIfStmt(const IfStmt<LoxTypeRef>& stmt) override;
+
+    LoxTypeRef visitWhileStmt(const WhileStmt<LoxTypeRef>& stmt) override;
 
   private:
     ILogger& logger;
     std::shared_ptr<Environment> environment;
 
-    void execute(std::shared_ptr<Stmt<LoxType>> stmt);
-    LoxType evaluate(std::shared_ptr<Expr<LoxType>> expr);
+    void execute(std::shared_ptr<Stmt<LoxTypeRef>> stmt);
+    LoxTypeRef evaluate(std::shared_ptr<Expr<LoxTypeRef>> expr);
 
     bool isTruthy(const LoxType& object);
 
+    bool isTruthy(LoxTypeRef object);
+
     bool isEqual(const LoxType& a, const LoxType& b);
+
+    bool isEqual(LoxTypeRef a, LoxTypeRef b);
 
     void checkNumberOperands(const Token& op, const LoxType& operand);
 
+    void checkNumberOperands(const Token& op, LoxTypeRef operand);
+
     void checkNumberOperands(const Token& op, const LoxType& left, const LoxType& right);
 
-    void executeBlock(const std::vector<std::shared_ptr<Stmt<LoxType>>>& statements,
+    void checkNumberOperands(const Token& op, LoxTypeRef left, LoxTypeRef right);
+
+    void executeBlock(const std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements,
                       std::shared_ptr<Environment> environment);
 };

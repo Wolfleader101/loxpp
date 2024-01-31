@@ -59,6 +59,7 @@
     "xhash": "cpp",
     "sstream": "cpp",
     "any": "cpp",
-    "variant": "cpp"
+    "variant": "cpp",
+    "functional": "cpp"
   }
 }
