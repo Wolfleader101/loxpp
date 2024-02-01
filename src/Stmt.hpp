@@ -25,10 +25,16 @@ template <typename T>
 class ExpressionStmt;
 
 template <typename T>
+class FunctionStmt;
+
+template <typename T>
 class IfStmt;
 
 template <typename T>
 class PrintStmt;
+
+template <typename T>
+class ReturnStmt;
 
 template <typename T>
 class VarStmt;
@@ -45,9 +51,13 @@ class StmtVisitor
 
     virtual T visitExpressionStmt(const ExpressionStmt<T>& stmt) = 0;
 
+    virtual T visitFunctionStmt(const FunctionStmt<T>& stmt) = 0;
+
     virtual T visitIfStmt(const IfStmt<T>& stmt) = 0;
 
     virtual T visitPrintStmt(const PrintStmt<T>& stmt) = 0;
+
+    virtual T visitReturnStmt(const ReturnStmt<T>& stmt) = 0;
 
     virtual T visitVarStmt(const VarStmt<T>& stmt) = 0;
 
@@ -82,6 +92,23 @@ class ExpressionStmt : public Stmt<T>
 };
 
 template <typename T>
+class FunctionStmt : public Stmt<T>
+{
+  public:
+    FunctionStmt(Token name, std::vector<Token> params, std::vector<std::shared_ptr<Stmt<T>>> body)
+        : name(name), params(params), body(body)
+    {
+    }
+    T accept(StmtVisitor<T>& visitor) const override
+    {
+        return visitor.visitFunctionStmt(*this);
+    }
+    Token name;
+    std::vector<Token> params;
+    std::vector<std::shared_ptr<Stmt<T>>> body;
+};
+
+template <typename T>
 class IfStmt : public Stmt<T>
 {
   public:
@@ -110,6 +137,21 @@ class PrintStmt : public Stmt<T>
         return visitor.visitPrintStmt(*this);
     }
     std::shared_ptr<Expr<T>> expression;
+};
+
+template <typename T>
+class ReturnStmt : public Stmt<T>
+{
+  public:
+    ReturnStmt(Token keyword, std::shared_ptr<Expr<T>> value) : keyword(keyword), value(value)
+    {
+    }
+    T accept(StmtVisitor<T>& visitor) const override
+    {
+        return visitor.visitReturnStmt(*this);
+    }
+    Token keyword;
+    std::shared_ptr<Expr<T>> value;
 };
 
 template <typename T>

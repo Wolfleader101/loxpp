@@ -48,17 +48,21 @@ class Parser
 
     std::shared_ptr<Stmt<LoxTypeRef>> declaration();
 
+    std::shared_ptr<Stmt<LoxTypeRef>> function(const std::string& kind);
+
     std::shared_ptr<Stmt<LoxTypeRef>> varDeclaration();
 
     std::shared_ptr<Stmt<LoxTypeRef>> statement();
 
-    std::shared_ptr<Stmt<LoxTypeRef>> block();
+    std::vector<std::shared_ptr<Stmt<LoxTypeRef>>> block();
 
     std::shared_ptr<Stmt<LoxTypeRef>> ifStatement();
 
+    std::shared_ptr<Stmt<LoxTypeRef>> expressionStatement();
+
     std::shared_ptr<Stmt<LoxTypeRef>> printStatement();
 
-    std::shared_ptr<Stmt<LoxTypeRef>> expressionStatement();
+    std::shared_ptr<Stmt<LoxTypeRef>> returnStatement();
 
     std::shared_ptr<Stmt<LoxTypeRef>> whileStatement();
 

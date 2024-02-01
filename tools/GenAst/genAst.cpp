@@ -53,16 +53,19 @@ int main(int argc, char** argv)
                   "Variable : Token name" // Variable class
               });
 
-    defineAst(output_dir, "Stmt",
-              {
-                  "Block      : std::vector<std::shared_ptr<Stmt<T>>> statements", // Block class
-                  "Expression : std::shared_ptr<Expr<T>> expression",              // Expression class
-                  "If         : std::shared_ptr<Expr<T>> condition, std::shared_ptr<Stmt<T>> thenBranch, "
-                  "std::shared_ptr<Stmt<T>> elseBranch",                                           // If class
-                  "Print      : std::shared_ptr<Expr<T>> expression",                              // Print class
-                  "Var        : Token name, std::shared_ptr<Expr<T>> initializer",                 // Var class
-                  "While      : std::shared_ptr<Expr<T>> condition, std::shared_ptr<Stmt<T>> body" // While class
-              });
+    defineAst(
+        output_dir, "Stmt",
+        {
+            "Block      : std::vector<std::shared_ptr<Stmt<T>>> statements", // Block class
+            "Expression : std::shared_ptr<Expr<T>> expression",              // Expression class
+            "Function   : Token name, std::vector<Token> params, std::vector<std::shared_ptr<Stmt<T>>> body", // Function
+            "If         : std::shared_ptr<Expr<T>> condition, std::shared_ptr<Stmt<T>> thenBranch, "
+            "std::shared_ptr<Stmt<T>> elseBranch",                                           // If class
+            "Print      : std::shared_ptr<Expr<T>> expression",                              // Print class
+            "Return     : Token keyword, std::shared_ptr<Expr<T>> value",                    // Return class
+            "Var        : Token name, std::shared_ptr<Expr<T>> initializer",                 // Var class
+            "While      : std::shared_ptr<Expr<T>> condition, std::shared_ptr<Stmt<T>> body" // While class
+        });
 
     return 0;
 }

@@ -34,7 +34,11 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
 
     LoxTypeRef visitExpressionStmt(const ExpressionStmt<LoxTypeRef>& stmt) override;
 
+    LoxTypeRef visitFunctionStmt(const FunctionStmt<LoxTypeRef>& stmt) override;
+
     LoxTypeRef visitPrintStmt(const PrintStmt<LoxTypeRef>& stmt) override;
+
+    LoxTypeRef visitReturnStmt(const ReturnStmt<LoxTypeRef>& stmt) override;
 
     LoxTypeRef visitVarStmt(const VarStmt<LoxTypeRef>& stmt) override;
 
@@ -43,6 +47,11 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
     LoxTypeRef visitIfStmt(const IfStmt<LoxTypeRef>& stmt) override;
 
     LoxTypeRef visitWhileStmt(const WhileStmt<LoxTypeRef>& stmt) override;
+
+    const std::shared_ptr<Environment> globals;
+
+    void executeBlock(const std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements,
+                      std::shared_ptr<Environment> environment);
 
   private:
     ILogger& logger;
@@ -66,7 +75,4 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
     void checkNumberOperands(const Token& op, const LoxType& left, const LoxType& right);
 
     void checkNumberOperands(const Token& op, LoxTypeRef left, LoxTypeRef right);
-
-    void executeBlock(const std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements,
-                      std::shared_ptr<Environment> environment);
 };

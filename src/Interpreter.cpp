@@ -1,10 +1,96 @@
 #include "Interpreter.hpp"
 
+#include <chrono>
 #include <iostream>
 
-Interpreter::Interpreter(ILogger& loggerRef) : logger(loggerRef), environment()
+class ClockCallable : public LoxCallable
 {
-    environment = std::make_shared<Environment>();
+  public:
+    ClockCallable() = default;
+
+    size_t arity() const override
+    {
+        return 0;
+    }
+
+    LoxTypeRef call(Interpreter& interpreter, std::vector<LoxTypeRef>& arguments) override
+    {
+        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+        std::chrono::duration<double> seconds = now.time_since_epoch();
+
+        return std::make_shared<LoxType>(seconds.count());
+    }
+
+    std::string toString() const override
+    {
+        return "<native fn>";
+    }
+};
+
+class Return : public std::exception
+{
+  public:
+    Return(LoxTypeRef value) : value(value)
+    {
+    }
+
+    const char* what() const noexcept override
+    {
+        return "Return";
+    }
+
+    LoxTypeRef value;
+};
+
+class LoxFunction : public LoxCallable
+{
+  public:
+    LoxFunction(const FunctionStmt<LoxTypeRef>& declaration, std::shared_ptr<Environment> closure)
+        : declaration(declaration), closure(closure)
+    {
+    }
+
+    size_t arity() const override
+    {
+        return declaration.params.size();
+    }
+
+    LoxTypeRef call(Interpreter& interpreter, std::vector<LoxTypeRef>& arguments) override
+    {
+        std::shared_ptr<Environment> environment = std::make_shared<Environment>(closure);
+
+        for (size_t i = 0; i < declaration.params.size(); i++)
+        {
+            environment->define(declaration.params[i].lexeme, arguments[i]);
+        }
+
+        try
+        {
+            interpreter.executeBlock(declaration.body, environment);
+        }
+        catch (const Return& returnValue)
+        {
+            return returnValue.value;
+        }
+
+        return nullptr;
+    }
+
+    std::string toString() const override
+    {
+        return "<fn " + declaration.name.lexeme + ">";
+    }
+
+  private:
+    const FunctionStmt<LoxTypeRef>& declaration;
+    std::shared_ptr<Environment> closure;
+};
+
+Interpreter::Interpreter(ILogger& loggerRef)
+    : logger(loggerRef), globals(std::make_shared<Environment>()), environment(globals)
+{
+    LoxTypeRef clockCallable = std::make_shared<LoxType>(std::make_shared<ClockCallable>());
+    globals->define("clock", clockCallable);
 }
 
 void Interpreter::interpret(std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements)
@@ -60,7 +146,14 @@ LoxTypeRef Interpreter::visitCallExpr(const CallExpr<LoxTypeRef>& expr)
         arguments.push_back(evaluate(argument));
     }
 
+    if (!IsCallable(*callee))
+        throw RuntimeError(expr.paren, "Can only call functions and classes.");
+
     std::shared_ptr<LoxCallable> function = std::get<std::shared_ptr<LoxCallable>>(callee->value());
+
+    if (arguments.size() != function->arity())
+        throw RuntimeError(expr.paren, "Expected " + std::to_string(function->arity()) + " arguments but got " +
+                                           std::to_string(arguments.size()) + ".");
 
     return function->call(*this, arguments);
 }
@@ -156,12 +249,32 @@ LoxTypeRef Interpreter::visitExpressionStmt(const ExpressionStmt<LoxTypeRef>& st
     return nullptr;
 }
 
+LoxTypeRef Interpreter::visitFunctionStmt(const FunctionStmt<LoxTypeRef>& stmt)
+{
+    LoxTypeRef function = std::make_shared<LoxType>(std::make_shared<LoxFunction>(stmt, environment));
+
+    environment->define(stmt.name.lexeme, function);
+
+    return nullptr;
+}
+
 LoxTypeRef Interpreter::visitPrintStmt(const PrintStmt<LoxTypeRef>& stmt)
 {
     LoxTypeRef value = evaluate(stmt.expression);
     std::cout << LoxTypeToString(*value) << std::endl;
 
     return nullptr;
+}
+
+LoxTypeRef Interpreter::visitReturnStmt(const ReturnStmt<LoxTypeRef>& stmt)
+{
+    LoxTypeRef value = nullptr;
+    if (stmt.value != nullptr)
+    {
+        value = evaluate(stmt.value);
+    }
+
+    throw Return(value);
 }
 
 LoxTypeRef Interpreter::visitBlockStmt(const BlockStmt<LoxTypeRef>& stmt)

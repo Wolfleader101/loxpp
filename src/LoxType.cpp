@@ -25,7 +25,7 @@ std::string LoxTypeToString(const LoxType& var)
             }
             else if constexpr (std::is_same_v<T, std::shared_ptr<LoxCallable>>)
             {
-                return "callable";
+                return value.get()->toString();
             }
             else
             {

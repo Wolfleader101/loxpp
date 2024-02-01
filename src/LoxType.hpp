@@ -9,7 +9,9 @@
 
 class LoxCallable;
 
-using LoxType = std::optional<std::variant<bool, double, std::string, std::shared_ptr<LoxCallable>>>;
+using LoxCallableRef = std::shared_ptr<LoxCallable>;
+
+using LoxType = std::optional<std::variant<bool, double, std::string, LoxCallableRef>>;
 
 using LoxTypeRef = std::shared_ptr<LoxType>;
 
@@ -20,7 +22,9 @@ class LoxCallable
   public:
     virtual ~LoxCallable() = default;
 
-    virtual LoxTypeRef call(const Interpreter& interpreter, std::vector<LoxTypeRef> arguments) = 0;
+    virtual std::size_t arity() const = 0;
+    virtual LoxTypeRef call(Interpreter& interpreter, std::vector<LoxTypeRef>& arguments) = 0;
+    virtual std::string toString() const = 0;
 };
 
 constexpr std::size_t BOOL_INDEX =

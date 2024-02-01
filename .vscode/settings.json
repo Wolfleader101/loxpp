@@ -60,6 +60,10 @@
     "sstream": "cpp",
     "any": "cpp",
     "variant": "cpp",
-    "functional": "cpp"
+    "functional": "cpp",
+    "chrono": "cpp",
+    "forward_list": "cpp",
+    "iomanip": "cpp",
+    "ratio": "cpp"
   }
 }

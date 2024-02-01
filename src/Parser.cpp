@@ -78,6 +78,11 @@ std::shared_ptr<Stmt<LoxTypeRef>> Parser::declaration()
 {
     try
     {
+        if (match({TokenType::FUN}))
+        {
+            return function("function");
+        }
+
         if (match({TokenType::VAR}))
         {
             return varDeclaration();
@@ -90,6 +95,34 @@ std::shared_ptr<Stmt<LoxTypeRef>> Parser::declaration()
         synchronize();
         return nullptr;
     }
+}
+
+std::shared_ptr<Stmt<LoxTypeRef>> Parser::function(const std::string& kind)
+{
+    Token name = consume(TokenType::IDENTIFIER, "Expect " + kind + " name.");
+    consume(TokenType::LEFT_PAREN, "Expect '(' after " + kind + " name.");
+
+    std::vector<Token> parameters;
+
+    if (!check(TokenType::RIGHT_PAREN))
+    {
+        do
+        {
+            if (parameters.size() >= 255)
+            {
+                error(peek(), "Can't have more than 255 parameters.");
+            }
+            parameters.push_back(consume(TokenType::IDENTIFIER, "Expect parameter name."));
+        } while (match({TokenType::COMMA}));
+    }
+
+    consume(TokenType::RIGHT_PAREN, "Expect ')' after parameters.");
+
+    consume(TokenType::LEFT_BRACE, "Expect '{' before " + kind + " body.");
+
+    std::vector<std::shared_ptr<Stmt<LoxTypeRef>>> body = block();
+
+    return std::make_shared<FunctionStmt<LoxTypeRef>>(name, parameters, body);
 }
 
 std::shared_ptr<Stmt<LoxTypeRef>> Parser::varDeclaration()
@@ -123,6 +156,11 @@ std::shared_ptr<Stmt<LoxTypeRef>> Parser::statement()
         return printStatement();
     }
 
+    if (match({TokenType::RETURN}))
+    {
+        return returnStatement();
+    }
+
     if (match({TokenType::WHILE}))
     {
         return whileStatement();
@@ -130,7 +168,7 @@ std::shared_ptr<Stmt<LoxTypeRef>> Parser::statement()
 
     if (match({TokenType::LEFT_BRACE}))
     {
-        return block();
+        return std::make_shared<BlockStmt<LoxTypeRef>>(block());
     }
 
     return expressionStatement();
@@ -224,7 +262,7 @@ std::shared_ptr<Stmt<LoxTypeRef>> Parser::forStatement()
     return body;
 }
 
-std::shared_ptr<Stmt<LoxTypeRef>> Parser::block()
+std::vector<std::shared_ptr<Stmt<LoxTypeRef>>> Parser::block()
 {
     std::vector<std::shared_ptr<Stmt<LoxTypeRef>>> statements;
 
@@ -234,7 +272,7 @@ std::shared_ptr<Stmt<LoxTypeRef>> Parser::block()
     }
 
     consume(TokenType::RIGHT_BRACE, "Expect '}' after block.");
-    return std::make_shared<BlockStmt<LoxTypeRef>>(statements);
+    return statements;
 }
 
 std::shared_ptr<Stmt<LoxTypeRef>> Parser::printStatement()
@@ -242,6 +280,18 @@ std::shared_ptr<Stmt<LoxTypeRef>> Parser::printStatement()
     std::shared_ptr<Expr<LoxTypeRef>> value = expression();
     consume(TokenType::SEMICOLON, "Expect ';' after value.");
     return std::make_shared<PrintStmt<LoxTypeRef>>(value);
+}
+
+std::shared_ptr<Stmt<LoxTypeRef>> Parser::returnStatement()
+{
+    Token keyword = previous();
+    std::shared_ptr<Expr<LoxTypeRef>> value = nullptr;
+    if (!check(TokenType::SEMICOLON))
+    {
+        value = expression();
+    }
+    consume(TokenType::SEMICOLON, "Expect ';' after return value.");
+    return std::make_shared<ReturnStmt<LoxTypeRef>>(keyword, value);
 }
 
 std::shared_ptr<Stmt<LoxTypeRef>> Parser::expressionStatement()
