@@ -53,9 +53,12 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
     void executeBlock(const std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements,
                       std::shared_ptr<Environment> environment);
 
+    void resolve(const Expr<LoxTypeRef>* expr, int depth);
+
   private:
     ILogger& logger;
     std::shared_ptr<Environment> environment;
+    std::unordered_map<const Expr<LoxTypeRef>*, int> locals;
 
     void execute(std::shared_ptr<Stmt<LoxTypeRef>> stmt);
     LoxTypeRef evaluate(std::shared_ptr<Expr<LoxTypeRef>> expr);
@@ -75,4 +78,46 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
     void checkNumberOperands(const Token& op, const LoxType& left, const LoxType& right);
 
     void checkNumberOperands(const Token& op, LoxTypeRef left, LoxTypeRef right);
+
+    template <typename T>
+    LoxTypeRef lookUpVariable(const Token& name, const Expr<T>& expr)
+    {
+        int distance = -1;
+        auto found = locals.find(&expr);
+
+        if (found != locals.end())
+        {
+            distance = found->second;
+        }
+
+        if (distance != -1)
+        {
+            return environment->getAt(distance, name.lexeme);
+        }
+        else
+        {
+            return globals->get(name);
+        }
+    }
+
+    template <typename T>
+    void assignVariable(const Token& name, const Expr<T>& expr, LoxTypeRef value)
+    {
+        int distance = -1;
+        auto found = locals.find(&expr);
+
+        if (found != locals.end())
+        {
+            distance = found->second;
+        }
+
+        if (distance != -1)
+        {
+            environment->assignAt(distance, name, value);
+        }
+        else
+        {
+            globals->assign(name, value);
+        }
+    }
 };

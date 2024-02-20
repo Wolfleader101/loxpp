@@ -15,6 +15,8 @@
 #include "Parser.hpp"
 #include "RuntimeError.hpp"
 
+#include "Resolver.hpp"
+
 void runCode(std::string& code);
 
 void runFile(const char* path);
@@ -35,6 +37,18 @@ class LoxppLogger : public ILogger
     void LogError(int line, const std::string& where, const std::string& message) override
     {
         reportError(line, where, message);
+    }
+
+    void LogError(const Token& token, const std::string& message) override
+    {
+        if (token.type == TokenType::END_OF_FILE)
+        {
+            LogError(token.line, " at end", message);
+        }
+        else
+        {
+            LogError(token.line, " at '" + token.lexeme + "'", message);
+        }
     }
 
     void LogRuntimeError(const RuntimeError& error) override
@@ -116,6 +130,12 @@ void runCode(std::string& code)
     std::vector<Token> tokens = scanner.scanTokens();
     Parser parser = Parser(tokens, logger);
     std::vector<std::shared_ptr<Stmt<LoxTypeRef>>> statements = parser.parse();
+
+    if (hadError)
+        return;
+
+    Resolver resolver = Resolver(logger, interpreter);
+    resolver.resolve(statements);
 
     if (hadError)
         return;

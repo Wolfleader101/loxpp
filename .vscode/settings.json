@@ -64,6 +64,11 @@
     "chrono": "cpp",
     "forward_list": "cpp",
     "iomanip": "cpp",
-    "ratio": "cpp"
+    "ratio": "cpp",
+    "stack": "cpp",
+    "deque": "cpp",
+    "array": "cpp",
+    "ranges": "cpp",
+    "span": "cpp"
   }
 }

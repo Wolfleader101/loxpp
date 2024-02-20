@@ -21,8 +21,14 @@ class Environment
 
     LoxTypeRef get(const Token& name);
 
+    LoxTypeRef getAt(int distance, const std::string& name);
+
+    void assignAt(int distance, const Token& name, LoxTypeRef value);
+
     const std::shared_ptr<Environment> enclosing = nullptr;
 
   private:
     std::unordered_map<std::string, LoxTypeRef> values;
+
+    std::shared_ptr<Environment> ancestor(int distance);
 };
