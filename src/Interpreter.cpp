@@ -45,7 +45,7 @@ class Return : public std::exception
 class LoxFunction : public LoxCallable
 {
   public:
-    LoxFunction(const FunctionStmt<LoxTypeRef>& declaration, Environment closure)
+    LoxFunction(const FunctionStmt<LoxTypeRef>& declaration, std::shared_ptr<Environment> closure)
         : declaration(declaration), closure(closure)
     {
     }
@@ -83,8 +83,7 @@ class LoxFunction : public LoxCallable
 
   private:
     const FunctionStmt<LoxTypeRef>& declaration;
-    Environment closure;
-    // std::shared_ptr<Environment> closure;
+    std::shared_ptr<Environment> closure;
 };
 
 Interpreter::Interpreter(ILogger& loggerRef)
@@ -252,7 +251,7 @@ LoxTypeRef Interpreter::visitExpressionStmt(const ExpressionStmt<LoxTypeRef>& st
 
 LoxTypeRef Interpreter::visitFunctionStmt(const FunctionStmt<LoxTypeRef>& stmt)
 {
-    LoxTypeRef function = std::make_shared<LoxType>(std::make_shared<LoxFunction>(stmt, *environment));
+    LoxTypeRef function = std::make_shared<LoxType>(std::make_shared<LoxFunction>(stmt, environment));
 
     environment->define(stmt.name.lexeme, function);
 
@@ -447,7 +446,8 @@ void Interpreter::checkNumberOperands(const Token& op, const LoxType& left, cons
 
     throw RuntimeError(op, "Operands must be numbers.");
 }
-void Interpreter::resolve(const Expr<LoxTypeRef>* expr, int depth)
+
+void Interpreter::resolve(const Expr<LoxTypeRef>& expr, int depth)
 {
-    locals.emplace(expr, depth);
+    locals.emplace(expr.getId(), depth);
 }

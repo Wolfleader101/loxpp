@@ -53,12 +53,12 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
     void executeBlock(const std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements,
                       std::shared_ptr<Environment> environment);
 
-    void resolve(const Expr<LoxTypeRef>* expr, int depth);
+    void resolve(const Expr<LoxTypeRef>& expr, int depth);
 
   private:
     ILogger& logger;
     std::shared_ptr<Environment> environment;
-    std::unordered_map<const Expr<LoxTypeRef>*, int> locals;
+    std::unordered_map<size_t, int> locals;
 
     void execute(std::shared_ptr<Stmt<LoxTypeRef>> stmt);
     LoxTypeRef evaluate(std::shared_ptr<Expr<LoxTypeRef>> expr);
@@ -83,7 +83,7 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
     LoxTypeRef lookUpVariable(const Token& name, const Expr<T>& expr)
     {
         int distance = -1;
-        auto found = locals.find(&expr);
+        auto found = locals.find(expr.getId());
 
         if (found != locals.end())
         {
@@ -104,7 +104,7 @@ class Interpreter : public ExprVisitor<LoxTypeRef>, public StmtVisitor<LoxTypeRe
     void assignVariable(const Token& name, const Expr<T>& expr, LoxTypeRef value)
     {
         int distance = -1;
-        auto found = locals.find(&expr);
+        auto found = locals.find(expr.getId());
 
         if (found != locals.end())
         {

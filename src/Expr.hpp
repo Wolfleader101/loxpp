@@ -13,9 +13,25 @@ template <typename T>
 class Expr
 {
   public:
+    Expr() : id(nextId++)
+    {
+    }
+
     virtual ~Expr() = default;
     virtual T accept(ExprVisitor<T>& visitor) const = 0;
+
+    std::size_t getId() const
+    {
+        return id;
+    }
+
+  private:
+    static std::size_t nextId;
+    std::size_t id;
 };
+
+template <typename T>
+std::size_t Expr<T>::nextId = 0;
 
 template <typename T>
 class AssignExpr;

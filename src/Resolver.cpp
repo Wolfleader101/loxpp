@@ -42,7 +42,10 @@ LoxTypeRef Resolver::visitIfStmt(const IfStmt<LoxTypeRef>& stmt)
 
 LoxTypeRef Resolver::visitPrintStmt(const PrintStmt<LoxTypeRef>& stmt)
 {
-    resolve(stmt.expression);
+    if (stmt.expression != nullptr)
+        resolve(stmt.expression);
+
+    return nullptr;
 }
 
 LoxTypeRef Resolver::visitReturnStmt(const ReturnStmt<LoxTypeRef>& stmt)
@@ -135,13 +138,16 @@ LoxTypeRef Resolver::visitVariableExpr(const VariableExpr<LoxTypeRef>& expr)
         logger.LogError(expr.name, "Cannot read local variable in its own initializer.");
     }
     resolveLocal(expr, expr.name);
+
+    return nullptr;
 }
 
 void Resolver::resolve(const std::vector<std::shared_ptr<Stmt<LoxTypeRef>>>& statements)
 {
     for (auto statement : statements)
     {
-        resolve(statement);
+        if (statement != nullptr)
+            resolve(statement);
     }
 }
 
@@ -184,11 +190,11 @@ void Resolver::define(const Token& name)
 
 void Resolver::resolveLocal(const Expr<LoxTypeRef>& expr, const Token& name)
 {
-    for (size_t i = scopes.size() - 1; i >= 0; i--)
+    for (int i = static_cast<int>(scopes.size()) - 1; i >= 0; i--)
     {
         if (scopes[i].find(name.lexeme) != scopes[i].end())
         {
-            interpreter.resolve(&expr, scopes.size() - 1 - i);
+            interpreter.resolve(expr, scopes.size() - 1 - i);
             return;
         }
     }
