@@ -28,8 +28,6 @@ endif()
 file(GLOB SRC src/*.cpp)
 include_directories(src/)
 
-add_subdirectory(tools/genAst)
-
 add_executable(${PROJECT_NAME} ${SRC})
 
 
