@@ -1,33 +1,206 @@
 #include "compiler.hpp"
 
-#include "scanner.hpp"
-
 #include <iomanip>
 #include <iostream>
 
-void compile(const std::string& source)
-{
-    Scanner scanner(source);
+#include "common.hpp"
+#include "scanner.hpp"
 
-    int line = -1;
+#ifdef DEBUG_PRINT_CODE
+#include "debug.hpp"
+#endif
+
+bool Compiler::compile(const std::string& source, Chunk* chunk)
+{
+    m_scanner.setSource(source);
+    m_currentChunk = chunk;
+
+    m_parser.hadError = false;
+    m_parser.panicMode = false;
+
+    advance();
+    expression();
+    consume(TOKEN_EOF, "Expect end of expression.");
+    endCompiler();
+
+    return !m_parser.hadError;
+}
+
+void Compiler::advance()
+{
+    m_parser.previous = m_parser.current;
 
     for (;;)
     {
-        Token token = scanner.scanToken();
-
-        if (token.line != line)
-        {
-            std::cout << std::setfill('0') << std::setw(4) << token.line << " ";
-            line = token.line;
-        }
-        else
-        {
-            std::cout << "   | ";
-        }
-
-        printf("%2d '%.*s'\n", token.type, token.length, token.start);
-
-        if (token.type == TOKEN_EOF)
+        m_parser.current = m_scanner.scanToken();
+        if (m_parser.current.type != TOKEN_ERROR)
             break;
+
+        errorAtCurrent(m_parser.current.start);
+    }
+}
+
+void Compiler::errorAtCurrent(const char* message)
+{
+    errorAt(m_parser.current, message);
+}
+
+void Compiler::error(const char* message)
+{
+    errorAt(m_parser.previous, message);
+}
+
+void Compiler::errorAt(const Token& token, const char* message)
+{
+    if (m_parser.panicMode)
+        return;
+    m_parser.panicMode = true;
+    std::cerr << "[line " << token.line << "] Error";
+
+    if (token.type == TOKEN_EOF)
+    {
+        std::cerr << " at end";
+    }
+    else if (token.type == TOKEN_ERROR)
+    {
+    }
+    else
+    {
+        std::cerr << " at '" << std::string(token.start, token.length) << "'";
+    }
+
+    std::cerr << ": " << message << std::endl;
+    m_parser.hadError = true;
+}
+
+void Compiler::consume(TokenType type, const char* message)
+{
+    if (m_parser.current.type == type)
+    {
+        advance();
+        return;
+    }
+
+    errorAtCurrent(message);
+}
+
+void Compiler::emitByte(uint8_t byte)
+{
+    m_currentChunk->writeChunk(byte, m_parser.previous.line);
+}
+
+void Compiler::endCompiler()
+{
+    emitReturn();
+
+#ifdef DEBUG_PRINT_CODE
+    if (!m_parser.hadError)
+        disassembleChunk(*m_currentChunk, "code");
+#endif
+}
+
+void Compiler::emitReturn()
+{
+    emitByte(OP_RETURN);
+}
+
+void Compiler::emitBytes(uint8_t b1, uint8_t b2)
+{
+    emitByte(b1);
+    emitByte(b2);
+}
+
+void Compiler::expression()
+{
+    parsePrecedence(Precedence::PREC_ASSIGNMENT);
+}
+
+void Compiler::numberConstant()
+{
+    double value = std::stod(std::string(m_parser.previous.start, m_parser.previous.length));
+    emitConstant(value);
+}
+
+void Compiler::emitConstant(Value value)
+{
+    emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+uint8_t Compiler::makeConstant(Value value)
+{
+    size_t constant = m_currentChunk->addConstant(value);
+    if (constant > UINT8_MAX)
+    {
+        error("Too many constants in one chunk.");
+        return 0;
+    }
+
+    return static_cast<uint8_t>(constant);
+}
+void Compiler::grouping()
+{
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+}
+
+void Compiler::unary()
+{
+    TokenType operatorType = m_parser.previous.type;
+
+    parsePrecedence(Precedence::PREC_UNARY);
+
+    // emite operator instruction
+    switch (operatorType)
+    {
+    case TOKEN_MINUS:
+        emitByte(OP_NEGATE);
+        break;
+    default:
+        return;
+    }
+}
+
+void Compiler::parsePrecedence(Precedence precedence)
+{
+    advance();
+    ParseFn prefixRule = rules.at(m_parser.previous.type).prefix;
+    if (prefixRule == nullptr)
+    {
+        error("Expect expression.");
+        return;
+    }
+
+    prefixRule(this); // Call the prefix parse function
+
+    while (precedence <= rules.at(m_parser.current.type).precedence)
+    {
+        advance();
+        ParseFn infixRule = rules.at(m_parser.previous.type).infix;
+        infixRule(this); // Call the infix parse function
+    }
+}
+
+void Compiler::binary()
+{
+    TokenType operatorType = m_parser.previous.type;
+    const ParseRule& rule = rules.at(operatorType);
+    parsePrecedence(static_cast<Precedence>(rule.precedence + 1));
+
+    switch (operatorType)
+    {
+    case TOKEN_PLUS:
+        emitByte(OP_ADD);
+        break;
+    case TOKEN_MINUS:
+        emitByte(OP_SUBTRACT);
+        break;
+    case TOKEN_STAR:
+        emitByte(OP_MULTIPLY);
+        break;
+    case TOKEN_SLASH:
+        emitByte(OP_DIVIDE);
+        break;
+    default:
+        return; // Unreachable.
     }
 }

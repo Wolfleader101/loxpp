@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "common.hpp"
+#include "compiler.hpp"
 #include "debug.hpp"
 
 InterpretResult VM::interpret(Chunk* chunk)
@@ -13,8 +14,22 @@ InterpretResult VM::interpret(Chunk* chunk)
     return run();
 }
 
-InterpretResult interpret(const std::string& source)
+InterpretResult VM::interpret(const std::string& source)
 {
+    Chunk chunk;
+    Compiler compiler;
+
+    if (!compiler.compile(source, &chunk))
+    {
+        return INTERPRET_COMPILE_ERROR;
+    }
+
+    m_currentChunk = &chunk;
+    m_instructionPointer = m_currentChunk->code.data();
+
+    InterpretResult result = run();
+
+    return result;
 }
 
 InterpretResult VM::run()

@@ -6,8 +6,8 @@
 #include <fstream>
 #include <iostream>
 
-static void repl(const VM& vm);
-static void runFile(const char* path, const VM& vm);
+static void repl(VM& vm);
+static void runFile(const char* path, VM& vm);
 
 int main(int argc, char* argv[])
 {
@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-static void runFile(const char* path, const VM& vm)
+static void runFile(const char* path, VM& vm)
 {
     std::ifstream file_stream(path);
 
@@ -81,7 +81,7 @@ static void runFile(const char* path, const VM& vm)
     }
 }
 
-static void repl(const VM& vm)
+static void repl(VM& vm)
 {
     for (;;)
     {

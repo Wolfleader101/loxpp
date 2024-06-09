@@ -53,6 +53,8 @@ enum TokenType
 
 struct Token
 {
+    Token() = default;
+
     Token(TokenType type, const char* start, int length, int line)
         : type(type), start(start), length(length), line(line)
     {
@@ -66,6 +68,8 @@ struct Token
 class Scanner
 {
   public:
+    Scanner() = default;
+
     Scanner(const std::string& source) : m_source(source)
     {
         m_start = 0;
@@ -75,8 +79,16 @@ class Scanner
 
     Token scanToken();
 
+    void setSource(const std::string& source)
+    {
+        m_source = source;
+        m_start = 0;
+        m_current = 0;
+        m_line = 1;
+    }
+
   private:
-    const std::string& m_source;
+    std::string m_source;
 
     size_t m_start;
     size_t m_current;

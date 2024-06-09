@@ -61,6 +61,9 @@ bool Scanner::isAtEnd()
 
 Token Scanner::makeToken(TokenType type)
 {
+    if (type == TOKEN_EOF)
+        return Token(type, "\0", 0, m_line);
+
     return Token(type, &m_source.at(m_start), m_current - m_start, m_line);
 }
 
@@ -71,7 +74,8 @@ Token Scanner::errorToken(const std::string& message)
 
 char Scanner::advance()
 {
-    return m_source[m_current++]; //! TODO book has m_current - 1??
+    m_current++;
+    return m_source[m_current - 1]; //! TODO book has m_current - 1??
 }
 
 bool Scanner::match(char expected)
