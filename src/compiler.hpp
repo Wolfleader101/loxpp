@@ -4,17 +4,22 @@
 #include <map>
 #include <string>
 
-#include "Scanner.hpp"
 #include "chunk.hpp"
+#include "scanner.hpp"
+
+class VM;
 
 class Compiler
 {
   public:
-    Compiler() = default;
+    Compiler(VM& vm) : m_vm(vm), m_scanner(), m_currentChunk(nullptr)
+    {
+    }
 
     bool compile(const std::string& source, Chunk* chunk);
 
   private:
+    VM& m_vm;
     struct Parser
     {
         Token current;
@@ -65,9 +70,11 @@ class Compiler
 
     uint8_t makeConstant(Value value);
     void numberConstant();
+    void stringConstant();
     void grouping();
     void unary();
     void binary();
+    void literal();
 
     void parsePrecedence(Precedence precedence);
 
@@ -83,31 +90,31 @@ class Compiler
         {TOKEN_SEMICOLON, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_SLASH, {nullptr, std::bind(&Compiler::binary, this), PREC_FACTOR}},
         {TOKEN_STAR, {nullptr, std::bind(&Compiler::binary, this), PREC_FACTOR}},
-        {TOKEN_BANG, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_BANG_EQUAL, {nullptr, nullptr, PREC_NONE}},
+        {TOKEN_BANG, {std::bind(&Compiler::unary, this), nullptr, PREC_NONE}},
+        {TOKEN_BANG_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_EQUALITY}},
         {TOKEN_EQUAL, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_EQUAL_EQUAL, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_GREATER, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_GREATER_EQUAL, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_LESS, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_LESS_EQUAL, {nullptr, nullptr, PREC_NONE}},
+        {TOKEN_EQUAL_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_EQUALITY}},
+        {TOKEN_GREATER, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
+        {TOKEN_GREATER_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
+        {TOKEN_LESS, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
+        {TOKEN_LESS_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
         {TOKEN_IDENTIFIER, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_STRING, {nullptr, nullptr, PREC_NONE}},
+        {TOKEN_STRING, {std::bind(&Compiler::stringConstant, this), nullptr, PREC_NONE}},
         {TOKEN_NUMBER, {std::bind(&Compiler::numberConstant, this), nullptr, PREC_NONE}},
         {TOKEN_AND, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_CLASS, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_ELSE, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_FALSE, {nullptr, nullptr, PREC_NONE}},
+        {TOKEN_FALSE, {std::bind(&Compiler::literal, this), nullptr, PREC_NONE}},
         {TOKEN_FOR, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_FUN, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_IF, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_NIL, {nullptr, nullptr, PREC_NONE}},
+        {TOKEN_NIL, {std::bind(&Compiler::literal, this), nullptr, PREC_NONE}},
         {TOKEN_OR, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_PRINT, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_RETURN, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_SUPER, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_THIS, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_TRUE, {nullptr, nullptr, PREC_NONE}},
+        {TOKEN_TRUE, {std::bind(&Compiler::literal, this), nullptr, PREC_NONE}},
         {TOKEN_VAR, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_WHILE, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_ERROR, {nullptr, nullptr, PREC_NONE}},

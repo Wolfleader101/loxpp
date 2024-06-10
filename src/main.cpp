@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
     }
     else
     {
-        std::cerr << "Usage: cpplox [path]" << std::endl;
+        std::cout << "Usage: cpplox [path]" << std::endl;
         exit(64);
     }
 
@@ -77,7 +77,7 @@ static void runFile(const char* path, VM& vm)
     }
     else
     {
-        std::cerr << "Error: Unable to open the file." << std::endl;
+        std::cout << "Error: Unable to open the file." << std::endl;
     }
 }
 

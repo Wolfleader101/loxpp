@@ -5,6 +5,7 @@
 
 #include "common.hpp"
 #include "scanner.hpp"
+#include "vm.hpp"
 
 #ifdef DEBUG_PRINT_CODE
 #include "debug.hpp"
@@ -55,21 +56,21 @@ void Compiler::errorAt(const Token& token, const char* message)
     if (m_parser.panicMode)
         return;
     m_parser.panicMode = true;
-    std::cerr << "[line " << token.line << "] Error";
+    std::cout << "[line " << token.line << "] Error";
 
     if (token.type == TOKEN_EOF)
     {
-        std::cerr << " at end";
+        std::cout << " at end";
     }
     else if (token.type == TOKEN_ERROR)
     {
     }
     else
     {
-        std::cerr << " at '" << std::string(token.start, token.length) << "'";
+        std::cout << " at '" << std::string(token.start, token.length) << "'";
     }
 
-    std::cerr << ": " << message << std::endl;
+    std::cout << ": " << message << std::endl;
     m_parser.hadError = true;
 }
 
@@ -118,7 +119,7 @@ void Compiler::expression()
 void Compiler::numberConstant()
 {
     double value = std::stod(std::string(m_parser.previous.start, m_parser.previous.length));
-    emitConstant(value);
+    emitConstant(Value(value));
 }
 
 void Compiler::emitConstant(Value value)
@@ -152,6 +153,9 @@ void Compiler::unary()
     // emite operator instruction
     switch (operatorType)
     {
+    case TOKEN_BANG:
+        emitByte(OP_NOT);
+        break;
     case TOKEN_MINUS:
         emitByte(OP_NEGATE);
         break;
@@ -188,6 +192,24 @@ void Compiler::binary()
 
     switch (operatorType)
     {
+    case TOKEN_BANG_EQUAL:
+        emitBytes(OP_EQUAL, OP_NOT);
+        break;
+    case TOKEN_EQUAL_EQUAL:
+        emitByte(OP_EQUAL);
+        break;
+    case TOKEN_GREATER:
+        emitByte(OP_GREATER);
+        break;
+    case TOKEN_GREATER_EQUAL:
+        emitBytes(OP_LESS, OP_NOT);
+        break;
+    case TOKEN_LESS:
+        emitByte(OP_LESS);
+        break;
+    case TOKEN_LESS_EQUAL:
+        emitBytes(OP_GREATER, OP_NOT);
+        break;
     case TOKEN_PLUS:
         emitByte(OP_ADD);
         break;
@@ -203,4 +225,29 @@ void Compiler::binary()
     default:
         return; // Unreachable.
     }
+}
+
+void Compiler::literal()
+{
+    switch (m_parser.previous.type)
+    {
+    case TOKEN_FALSE:
+        emitByte(OP_FALSE);
+        break;
+    case TOKEN_TRUE:
+        emitByte(OP_TRUE);
+        break;
+    case TOKEN_NIL:
+        emitByte(OP_NIL);
+        break;
+    default:
+        return; // Unreachable.
+    }
+}
+
+void Compiler::stringConstant()
+{
+    auto obj = std::make_shared<ObjString>(m_parser.previous.start + 1, m_parser.previous.length - 2);
+    m_vm.insertObject(obj);
+    emitConstant(Value(obj));
 }

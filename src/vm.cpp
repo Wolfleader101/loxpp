@@ -1,7 +1,5 @@
 #include "vm.hpp"
 
-#include <iostream>
-
 #include "common.hpp"
 #include "compiler.hpp"
 #include "debug.hpp"
@@ -17,7 +15,7 @@ InterpretResult VM::interpret(Chunk* chunk)
 InterpretResult VM::interpret(const std::string& source)
 {
     Chunk chunk;
-    Compiler compiler;
+    Compiler compiler(*this);
 
     if (!compiler.compile(source, &chunk))
     {
@@ -36,12 +34,17 @@ InterpretResult VM::run()
 {
 #define READ_BYTE() (*m_instructionPointer++)
 #define READ_CONSTANT() (m_currentChunk->constants[READ_BYTE()])
-#define BINARY_OP(op)     \
-    do                    \
-    {                     \
-        double b = pop(); \
-        double a = pop(); \
-        push(a op b);     \
+#define BINARY_OP(op)                                   \
+    do                                                  \
+    {                                                   \
+        if (!peek(0).isNumber() || !peek(1).isNumber()) \
+        {                                               \
+            runtimeError("Operands must be numbers.");  \
+            return INTERPRET_RUNTIME_ERROR;             \
+        }                                               \
+        double b = pop().asNumber();                    \
+        double a = pop().asNumber();                    \
+        push(Value(a op b));                            \
     } while (false)
 
     for (;;)
@@ -59,8 +62,35 @@ InterpretResult VM::run()
             std::cout << std::endl;
             break;
         }
+        case OP_NIL:
+            push(Value(nullptr));
+            break;
+        case OP_TRUE:
+            push(Value(true));
+            break;
+        case OP_FALSE:
+            push(Value(false));
+            break;
+        case OP_EQUAL: {
+            Value b = pop();
+            Value a = pop();
+            push(Value(a == b));
+            break;
+        }
         case OP_ADD:
-            BINARY_OP(+);
+            if (peek(0).isString() && peek(1).isString())
+            {
+                concactenate();
+            }
+            else if (peek(0).isNumber() && peek(1).isNumber())
+            {
+                BINARY_OP(+);
+            }
+            else
+            {
+                runtimeError("Operands must be two numbers or two strings.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
             break;
         case OP_SUBTRACT:
             BINARY_OP(-);
@@ -71,8 +101,16 @@ InterpretResult VM::run()
         case OP_DIVIDE:
             BINARY_OP(/);
             break;
+        case OP_NOT:
+            push(Value(isFalsey(pop())));
+            break;
         case OP_NEGATE:
-            push(-pop());
+            if (!peek(0).isNumber())
+            {
+                runtimeError("Operand must be a number.");
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            push(-pop().asNumber());
             break;
 
         case OP_RETURN: {
@@ -92,25 +130,33 @@ void VM::printStack()
 {
     std::cout << "          ";
 
-    std::stack<Value> tempStack;
-
-    // transfer the stack to a temporary stack and print the values
-    while (!m_stack.empty())
+    for (const Value& value : m_stack)
     {
-        Value value = m_stack.top();
-        m_stack.pop();
-        tempStack.push(value);
-
         std::cout << "[ ";
         printValue(value);
         std::cout << " ]";
     }
 
-    while (!tempStack.empty())
-    {
-        m_stack.push(tempStack.top());
-        tempStack.pop();
-    }
-
     std::cout << std::endl;
+}
+
+Value VM::peek(int distance)
+{
+    return m_stack[m_stack.size() - 1 - distance];
+}
+
+bool VM::isFalsey(const Value& value)
+{
+    return value.isNil() || (value.isBool() && !value.asBool());
+}
+
+void VM::concactenate()
+{
+    std::shared_ptr<ObjString> b = pop().asString();
+    std::shared_ptr<ObjString> a = pop().asString();
+
+    std::string result = a->str + b->str;
+    m_objects.push_back(std::make_shared<ObjString>(result));
+
+    push(Value(m_objects.back()));
 }
