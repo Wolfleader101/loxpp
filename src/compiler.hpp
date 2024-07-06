@@ -3,6 +3,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <vector>
 
 #include "chunk.hpp"
 #include "scanner.hpp"
@@ -20,6 +21,16 @@ class Compiler
 
   private:
     VM& m_vm;
+
+    struct Local
+    {
+        Token name;
+        int depth;
+    };
+
+    std::vector<Local> m_locals;
+    size_t m_localCount;
+    int m_scopeDepth;
     struct Parser
     {
         Token current;
@@ -43,7 +54,7 @@ class Compiler
         PREC_PRIMARY
     };
 
-    using ParseFn = std::function<void(Compiler*)>;
+    using ParseFn = std::function<void(Compiler*, bool)>;
     struct ParseRule
     {
         ParseFn prefix;
@@ -67,54 +78,83 @@ class Compiler
     void errorAtCurrent(const char* message);
     void errorAt(const Token& token, const char* message);
     void error(const char* message);
+    void synchronize();
 
     uint8_t makeConstant(Value value);
-    void numberConstant();
-    void stringConstant();
-    void grouping();
-    void unary();
-    void binary();
-    void literal();
 
+    void declaration();
+    void varDeclaration();
+    void statement();
+    void beginScope();
+    void block();
+    void endScope();
+    void ifStatement();
+    int emitJump(uint8_t instruction);
+    void patchJump(int offset);
+
+    bool match(TokenType type);
+    bool check(TokenType type);
+    bool identifiersEqual(const Token& a, const Token& b);
     void parsePrecedence(Precedence precedence);
+    void namedVariable(const Token& name, bool canAssign);
+    int resolveLocal(const Token& name);
+
+    void printStatement();
+    void expressionStatement();
+    uint8_t parseVariable(const char* errorMessage);
+    uint8_t identifierConstant(const Token& name);
+    void defineVariable(uint8_t global);
+    void declareVariable();
+    void addLocal(const Token& name);
+    void markInitialized();
+
+    void numberConstant(bool canAssign);
+    void stringConstant(bool canAssign);
+    void grouping(bool canAssign);
+    void unary(bool canAssign);
+    void binary(bool canAssign);
+    void literal(bool canAssign);
+    void variable(bool canAssign);
+
+#define BIND_FN(fn) std::bind(&Compiler::fn, this, std::placeholders::_1)
 
     const std::map<TokenType, ParseRule> rules = {
-        {TOKEN_LEFT_PAREN, {std::bind(&Compiler::grouping, this), nullptr, PREC_NONE}},
+        {TOKEN_LEFT_PAREN, {BIND_FN(grouping), nullptr, PREC_NONE}},
         {TOKEN_RIGHT_PAREN, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_LEFT_BRACE, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_RIGHT_BRACE, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_COMMA, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_DOT, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_MINUS, {std::bind(&Compiler::unary, this), std::bind(&Compiler::binary, this), PREC_TERM}},
-        {TOKEN_PLUS, {nullptr, std::bind(&Compiler::binary, this), PREC_TERM}},
+        {TOKEN_MINUS, {BIND_FN(unary), BIND_FN(binary), PREC_TERM}},
+        {TOKEN_PLUS, {nullptr, BIND_FN(binary), PREC_TERM}},
         {TOKEN_SEMICOLON, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_SLASH, {nullptr, std::bind(&Compiler::binary, this), PREC_FACTOR}},
-        {TOKEN_STAR, {nullptr, std::bind(&Compiler::binary, this), PREC_FACTOR}},
-        {TOKEN_BANG, {std::bind(&Compiler::unary, this), nullptr, PREC_NONE}},
-        {TOKEN_BANG_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_EQUALITY}},
+        {TOKEN_SLASH, {nullptr, BIND_FN(binary), PREC_FACTOR}},
+        {TOKEN_STAR, {nullptr, BIND_FN(binary), PREC_FACTOR}},
+        {TOKEN_BANG, {BIND_FN(unary), nullptr, PREC_NONE}},
+        {TOKEN_BANG_EQUAL, {nullptr, BIND_FN(binary), PREC_EQUALITY}},
         {TOKEN_EQUAL, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_EQUAL_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_EQUALITY}},
-        {TOKEN_GREATER, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
-        {TOKEN_GREATER_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
-        {TOKEN_LESS, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
-        {TOKEN_LESS_EQUAL, {nullptr, std::bind(&Compiler::binary, this), PREC_COMPARISON}},
-        {TOKEN_IDENTIFIER, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_STRING, {std::bind(&Compiler::stringConstant, this), nullptr, PREC_NONE}},
-        {TOKEN_NUMBER, {std::bind(&Compiler::numberConstant, this), nullptr, PREC_NONE}},
+        {TOKEN_EQUAL_EQUAL, {nullptr, BIND_FN(binary), PREC_EQUALITY}},
+        {TOKEN_GREATER, {nullptr, BIND_FN(binary), PREC_COMPARISON}},
+        {TOKEN_GREATER_EQUAL, {nullptr, BIND_FN(binary), PREC_COMPARISON}},
+        {TOKEN_LESS, {nullptr, BIND_FN(binary), PREC_COMPARISON}},
+        {TOKEN_LESS_EQUAL, {nullptr, BIND_FN(binary), PREC_COMPARISON}},
+        {TOKEN_IDENTIFIER, {BIND_FN(variable), nullptr, PREC_NONE}},
+        {TOKEN_STRING, {BIND_FN(stringConstant), nullptr, PREC_NONE}},
+        {TOKEN_NUMBER, {BIND_FN(numberConstant), nullptr, PREC_NONE}},
         {TOKEN_AND, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_CLASS, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_ELSE, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_FALSE, {std::bind(&Compiler::literal, this), nullptr, PREC_NONE}},
+        {TOKEN_FALSE, {BIND_FN(literal), nullptr, PREC_NONE}},
         {TOKEN_FOR, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_FUN, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_IF, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_NIL, {std::bind(&Compiler::literal, this), nullptr, PREC_NONE}},
+        {TOKEN_NIL, {BIND_FN(literal), nullptr, PREC_NONE}},
         {TOKEN_OR, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_PRINT, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_RETURN, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_SUPER, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_THIS, {nullptr, nullptr, PREC_NONE}},
-        {TOKEN_TRUE, {std::bind(&Compiler::literal, this), nullptr, PREC_NONE}},
+        {TOKEN_TRUE, {BIND_FN(literal), nullptr, PREC_NONE}},
         {TOKEN_VAR, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_WHILE, {nullptr, nullptr, PREC_NONE}},
         {TOKEN_ERROR, {nullptr, nullptr, PREC_NONE}},

@@ -3,6 +3,7 @@
 #include <format>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "chunk.hpp"
@@ -53,6 +54,7 @@ class VM
   private:
     std::vector<Value> m_stack;
     std::vector<std::shared_ptr<Obj>> m_objects;
+    std::unordered_map<std::string, Value> m_globals;
     Chunk* m_currentChunk;
     uint8_t* m_instructionPointer;
 

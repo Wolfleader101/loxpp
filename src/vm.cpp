@@ -33,6 +33,7 @@ InterpretResult VM::interpret(const std::string& source)
 InterpretResult VM::run()
 {
 #define READ_BYTE() (*m_instructionPointer++)
+#define READ_SHORT() (m_instructionPointer += 2, (uint16_t)((m_instructionPointer[-2] << 8) | m_instructionPointer[-1]))
 #define READ_CONSTANT() (m_currentChunk->constants[READ_BYTE()])
 #define BINARY_OP(op)                                   \
     do                                                  \
@@ -71,6 +72,52 @@ InterpretResult VM::run()
         case OP_FALSE:
             push(Value(false));
             break;
+        case OP_POP:
+            pop();
+            break;
+        case OP_GET_LOCAL: {
+            uint8_t slot = READ_BYTE();
+            push(m_stack[slot]);
+            break;
+        }
+        case OP_SET_LOCAL: {
+            uint8_t slot = READ_BYTE();
+            m_stack[slot] = peek(0);
+            break;
+        }
+        case OP_GET_GLOBAL: {
+            std::shared_ptr<ObjString> name = READ_CONSTANT().asString();
+            Value value;
+            try
+            {
+                value = m_globals[name->str];
+            }
+            catch (std::out_of_range)
+            {
+                runtimeError("Undefined variable '%s'.", name->str.c_str());
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            push(value);
+            break;
+        }
+        case OP_DEFINE_GLOBAL: {
+            std::shared_ptr<ObjString> name = READ_CONSTANT().asString();
+            m_globals[name->str] = peek(0);
+            pop();
+            break;
+        }
+        case OP_SET_GLOBAL: {
+            std::shared_ptr<ObjString> name = READ_CONSTANT().asString();
+            if (m_globals.find(name->str) == m_globals.end())
+            {
+                runtimeError("Undefined variable '%s'.", name->str.c_str());
+                return INTERPRET_RUNTIME_ERROR;
+            }
+
+            m_globals[name->str] = peek(0);
+            break;
+        }
         case OP_EQUAL: {
             Value b = pop();
             Value a = pop();
@@ -112,16 +159,30 @@ InterpretResult VM::run()
             }
             push(-pop().asNumber());
             break;
-
-        case OP_RETURN: {
+        case OP_PRINT: {
             printValue(pop());
             std::cout << std::endl;
-            return INTERPRET_OK;
         }
+        case OP_JUMP: {
+            uint16_t offset = READ_SHORT();
+            m_instructionPointer += offset;
+            break;
+        }
+        case OP_JUMP_IF_FALSE: {
+            uint16_t offset = READ_SHORT();
+            if (isFalsey(peek(0)))
+            {
+                m_instructionPointer += offset;
+            }
+            break;
+        }
+        case OP_RETURN:
+            return INTERPRET_OK;
         }
     }
 
 #undef READ_BYTE
+#undef READ_SHORT
 #undef READ_CONSTANT
 #undef BINARY_OP
 }

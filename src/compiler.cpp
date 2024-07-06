@@ -20,8 +20,13 @@ bool Compiler::compile(const std::string& source, Chunk* chunk)
     m_parser.panicMode = false;
 
     advance();
-    expression();
-    consume(TOKEN_EOF, "Expect end of expression.");
+    // expression();
+    // consume(TOKEN_EOF, "Expect end of expression.");
+    while (!match(TOKEN_EOF))
+    {
+        declaration();
+    }
+
     endCompiler();
 
     return !m_parser.hadError;
@@ -116,7 +121,7 @@ void Compiler::expression()
     parsePrecedence(Precedence::PREC_ASSIGNMENT);
 }
 
-void Compiler::numberConstant()
+void Compiler::numberConstant(bool)
 {
     double value = std::stod(std::string(m_parser.previous.start, m_parser.previous.length));
     emitConstant(Value(value));
@@ -138,13 +143,13 @@ uint8_t Compiler::makeConstant(Value value)
 
     return static_cast<uint8_t>(constant);
 }
-void Compiler::grouping()
+void Compiler::grouping(bool)
 {
     expression();
     consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
-void Compiler::unary()
+void Compiler::unary(bool)
 {
     TokenType operatorType = m_parser.previous.type;
 
@@ -174,17 +179,23 @@ void Compiler::parsePrecedence(Precedence precedence)
         return;
     }
 
-    prefixRule(this); // Call the prefix parse function
+    bool canAssign = precedence <= Precedence::PREC_ASSIGNMENT;
+    prefixRule(this, canAssign); // Call the prefix parse function
 
     while (precedence <= rules.at(m_parser.current.type).precedence)
     {
         advance();
         ParseFn infixRule = rules.at(m_parser.previous.type).infix;
-        infixRule(this); // Call the infix parse function
+        infixRule(this, canAssign); // Call the infix parse function
+    }
+
+    if (canAssign && match(TOKEN_EQUAL))
+    {
+        error("Invalid assignment target.");
     }
 }
 
-void Compiler::binary()
+void Compiler::binary(bool)
 {
     TokenType operatorType = m_parser.previous.type;
     const ParseRule& rule = rules.at(operatorType);
@@ -227,7 +238,7 @@ void Compiler::binary()
     }
 }
 
-void Compiler::literal()
+void Compiler::literal(bool)
 {
     switch (m_parser.previous.type)
     {
@@ -245,9 +256,321 @@ void Compiler::literal()
     }
 }
 
-void Compiler::stringConstant()
+void Compiler::stringConstant(bool)
 {
     auto obj = std::make_shared<ObjString>(m_parser.previous.start + 1, m_parser.previous.length - 2);
     m_vm.insertObject(obj);
     emitConstant(Value(obj));
+}
+
+bool Compiler::match(TokenType type)
+{
+    if (!check(type))
+        return false;
+    advance();
+    return true;
+}
+
+bool Compiler::check(TokenType type)
+{
+    return m_parser.current.type == type;
+}
+
+void Compiler::declaration()
+{
+    if (match(TOKEN_VAR))
+    {
+        varDeclaration();
+    }
+    else
+    {
+        statement();
+    }
+
+    if (m_parser.panicMode)
+    {
+        synchronize();
+    }
+}
+
+void Compiler::statement()
+{
+    if (match(TOKEN_PRINT))
+    {
+        printStatement();
+    }
+    else if (match(TOKEN_IF))
+    {
+        ifStatement();
+    }
+    else if (match(TOKEN_LEFT_BRACE))
+    {
+        beginScope();
+        block();
+        endScope();
+    }
+    else
+    {
+        expressionStatement();
+    }
+}
+
+void Compiler::printStatement()
+{
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+    emitByte(OP_PRINT);
+}
+
+void Compiler::expressionStatement()
+{
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
+    emitByte(OP_POP);
+}
+
+void Compiler::synchronize()
+{
+    m_parser.panicMode = false;
+
+    while (m_parser.current.type != TOKEN_EOF)
+    {
+        if (m_parser.previous.type == TOKEN_SEMICOLON)
+            return;
+
+        switch (m_parser.current.type)
+        {
+        case TOKEN_CLASS:
+        case TOKEN_FUN:
+        case TOKEN_VAR:
+        case TOKEN_FOR:
+        case TOKEN_IF:
+        case TOKEN_WHILE:
+        case TOKEN_PRINT:
+        case TOKEN_RETURN:
+            return;
+        default:
+            // do nothing
+            ;
+        }
+
+        advance();
+    }
+}
+
+void Compiler::varDeclaration()
+{
+    uint8_t global = parseVariable("Expect variable name.");
+
+    if (match(TOKEN_EQUAL))
+    {
+        expression();
+    }
+    else
+    {
+        emitByte(OP_NIL);
+    }
+
+    consume(TOKEN_SEMICOLON, "Expect ';' after variable declaration.");
+
+    defineVariable(global);
+}
+
+uint8_t Compiler::parseVariable(const char* errorMessage)
+{
+    consume(TOKEN_IDENTIFIER, errorMessage);
+
+    declareVariable();
+    if (m_scopeDepth > 0)
+        return 0;
+
+    return identifierConstant(m_parser.previous);
+}
+
+uint8_t Compiler::identifierConstant(const Token& name)
+{
+    return makeConstant(Value(std::make_shared<ObjString>(name.start, name.length)));
+}
+
+void Compiler::defineVariable(uint8_t global)
+{
+    if (m_scopeDepth > 0)
+    {
+        markInitialized();
+        return;
+    }
+
+    emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
+void Compiler::variable(bool canAssign)
+{
+    namedVariable(m_parser.previous, canAssign);
+}
+
+void Compiler::namedVariable(const Token& name, bool canAssign)
+{
+    uint8_t getOp, setOp;
+    int arg = resolveLocal(name);
+    if (arg != -1)
+    {
+        getOp = OP_GET_LOCAL;
+        setOp = OP_SET_LOCAL;
+    }
+    else
+    {
+        arg = identifierConstant(name);
+        getOp = OP_GET_GLOBAL;
+        setOp = OP_SET_GLOBAL;
+    }
+
+    if (canAssign && match(TOKEN_EQUAL))
+    {
+        expression();
+        emitBytes(setOp, static_cast<uint8_t>(arg));
+    }
+    else
+    {
+        emitBytes(getOp, static_cast<uint8_t>(arg));
+    }
+}
+
+void Compiler::beginScope()
+{
+    m_scopeDepth++;
+}
+
+void Compiler::block()
+{
+    while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF))
+    {
+        declaration();
+    }
+
+    consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
+}
+
+void Compiler::endScope()
+{
+    m_scopeDepth--;
+
+    while (m_localCount > 0 && m_locals[m_localCount - 1].depth > m_scopeDepth)
+    {
+        emitByte(OP_POP);
+        m_localCount--;
+    }
+}
+
+void Compiler::declareVariable()
+{
+    if (m_scopeDepth == 0)
+        return;
+
+    Token& name = m_parser.previous;
+
+    for (size_t i = m_localCount - 1; i >= 0; i--)
+    {
+        Local& local = m_locals[i];
+        if (local.depth != -1 && local.depth < m_scopeDepth)
+            break;
+
+        if (identifiersEqual(name, local.name))
+        {
+            error("Variable with this name already declared in this scope.");
+        }
+    }
+
+    addLocal(name);
+}
+
+void Compiler::addLocal(const Token& name)
+{
+#define UINT8_COUNT (UINT8_MAX + 1)
+    if (m_localCount == UINT8_COUNT) // TODO i dont think this is needed because of vector?
+    {
+        error("Too many local variables in function.");
+        return;
+    }
+
+    Local& local = m_locals[m_localCount++];
+    local.name = name;
+    local.depth = -1;
+#undef UINT8_COUNT
+}
+
+bool Compiler::identifiersEqual(const Token& a, const Token& b)
+{
+    if (a.length != b.length)
+        return false;
+
+    return std::strncmp(a.start, b.start, a.length) == 0;
+}
+
+int Compiler::resolveLocal(const Token& name)
+{
+    for (size_t i = m_localCount - 1; i >= 0; i--)
+    {
+        Local& local = m_locals[i];
+        if (identifiersEqual(name, local.name))
+        {
+            if (local.depth == -1)
+            {
+                error("Cannot read local variable in its own initializer.");
+            }
+            return i;
+        }
+    }
+
+    return -1;
+}
+
+void Compiler::markInitialized()
+{
+    if (m_scopeDepth == 0)
+        return;
+
+    m_locals[m_localCount - 1].depth = m_scopeDepth;
+}
+
+void Compiler::ifStatement()
+{
+    consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+    expression();
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+    int thenJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP);
+    statement();
+
+    int elseJump = emitJump(OP_JUMP);
+
+    patchJump(thenJump);
+    emitByte(OP_POP);
+
+    if (match(TOKEN_ELSE))
+        statement();
+
+    patchJump(elseJump);
+}
+
+int Compiler::emitJump(uint8_t instruction)
+{
+    emitByte(instruction);
+    emitByte(0xff);
+    emitByte(0xff);
+    return m_currentChunk->code.size() - 2;
+}
+
+void Compiler::patchJump(int offset)
+{
+    // -2 to adjust for the bytecode for the jump offset itself.
+    int jump = m_currentChunk->code.size() - offset - 2;
+
+    if (jump > UINT16_MAX)
+    {
+        error("Too much code to jump over.");
+    }
+
+    m_currentChunk->code[offset] = (jump >> 8) & 0xff;
+    m_currentChunk->code[offset + 1] = jump & 0xff;
 }
